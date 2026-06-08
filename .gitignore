@@ -1,0 +1,49 @@
+# SPECTRE binary
+/spectre
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+*.test
+*.out
+coverage.out
+coverage.html
+/vendor/
+
+# Frontend build output
+/web/dist/
+/web/node_modules/
+
+# Embedded React assets (copied from web/dist via make embed)
+/internal/server/dist/
+
+# Local toolchain (not required for production)
+/.tools/
+
+# graphify generated outputs
+/graphify-out/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# IDE & editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+/tmp/
+.air.toml.bak
+
+# OS / Cursor (keep project skills)
+# .cursor/skills/ is intentionally tracked

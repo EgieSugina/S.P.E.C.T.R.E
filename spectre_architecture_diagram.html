@@ -1,0 +1,128 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#07070F;}
+.wrap{background:#07070F;padding:20px;font-family:'JetBrains Mono',monospace;color:#E2E8F0;min-height:600px;}
+.title-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+.logo{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:#A78BFA;letter-spacing:4px;}
+.sub{font-size:10px;color:#4A5568;letter-spacing:2px;text-transform:uppercase;}
+.badge{font-size:9px;background:#2D1B69;color:#A78BFA;border:1px solid #5B21B6;padding:2px 8px;border-radius:2px;letter-spacing:2px;}
+.arch{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.box{border:1px solid #2D1B69;border-radius:2px;padding:14px;position:relative;background:#0D0D1A;}
+.box.accent{border-color:#5B21B6;box-shadow:0 0 12px rgba(124,58,237,0.2);}
+.box.main{grid-column:1/-1;border-color:#7C3AED;box-shadow:0 0 20px rgba(124,58,237,0.25);}
+.box-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#7C3AED;margin-bottom:10px;font-weight:700;}
+.box-title span{color:#A78BFA;}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-size:10px;padding:3px 8px;border-radius:2px;font-family:'JetBrains Mono',monospace;letter-spacing:1px;}
+.chip.go{background:#0A2A1A;color:#39FF14;border:1px solid #1A4A2A;}
+.chip.react{background:#0A1A2A;color:#00FFFF;border:1px solid #1A3A4A;}
+.chip.db{background:#1A1A0A;color:#FFB700;border:1px solid #3A3A1A;}
+.chip.sec{background:#2A0A1A;color:#FF2D55;border:1px solid #4A1A2A;}
+.chip.purple{background:#1A0A2A;color:#C4B5FD;border:1px solid #3A1A5A;}
+.conn-flow{display:flex;align-items:center;gap:8px;margin:8px 0;}
+.node{padding:6px 12px;border-radius:2px;font-size:10px;letter-spacing:1px;font-weight:500;text-align:center;min-width:80px;}
+.node.browser{background:#0D0D1A;border:1px solid #5B21B6;color:#A78BFA;}
+.node.ws{background:#0D0D1A;border:1px solid #39FF14;color:#39FF14;font-size:9px;}
+.node.go{background:#0D0D1A;border:1px solid #7C3AED;color:#E2E8F0;}
+.node.ssh{background:#0D0D1A;border:1px solid #FF2D55;color:#FF2D55;}
+.arrow{color:#4A5568;font-size:14px;flex:1;text-align:center;position:relative;}
+.arrow::after{content:'';display:block;height:1px;background:linear-gradient(90deg,transparent,#5B21B6,transparent);margin-top:-8px;}
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;}
+.feat{padding:10px;border:1px solid #1A1A2E;border-radius:2px;background:#030305;}
+.feat-icon{font-size:16px;margin-bottom:4px;}
+.feat-name{font-size:9px;color:#A78BFA;letter-spacing:2px;text-transform:uppercase;font-weight:700;}
+.feat-desc{font-size:9px;color:#4A5568;margin-top:2px;line-height:1.4;}
+.stack-row{display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid #0D0D1A;}
+.stack-row:last-child{border-bottom:none;}
+.stack-label{font-size:9px;color:#4A5568;width:70px;letter-spacing:1px;}
+.stack-val{font-size:9px;color:#E2E8F0;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:#39FF14;display:inline-block;margin-right:4px;animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 4px #39FF14;}50%{opacity:.5;box-shadow:0 0 12px #39FF14;}}
+.port-badge{font-size:9px;background:#1A0A2A;color:#C4B5FD;border:1px solid #5B21B6;padding:1px 6px;border-radius:2px;}
+</style>
+<div class="wrap">
+  <div class="title-row">
+    <div>
+      <div class="logo">S.P.E.C.T.R.E</div>
+      <div class="sub">Secure Proxy &amp; Encrypted Connection Tunneling Remote Environment</div>
+    </div>
+    <div style="margin-left:auto;text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+      <div class="badge">v1.0.0 BLUEPRINT</div>
+      <div style="font-size:9px;color:#2D1B69;">SINGLE BINARY · DARK OPS</div>
+    </div>
+  </div>
+
+  <div class="arch">
+    <div class="box main">
+      <div class="box-title">▸ <span>SPECTRE</span> BINARY — GO SINGLE EXECUTABLE</div>
+      <div class="conn-flow">
+        <div class="node browser">Browser<br><span style="font-size:8px;color:#4A5568;">React + Vite</span></div>
+        <div class="arrow">WebSocket / HTTP</div>
+        <div class="node go">Go Backend<br><span style="font-size:8px;color:#4A5568;">:57321</span></div>
+        <div class="arrow">SSH/SFTP</div>
+        <div class="node ssh">Remote Server<br><span style="font-size:8px;color:#4A5568;">:22</span></div>
+      </div>
+      <div style="font-size:9px;color:#4A5568;margin-top:4px;padding-left:4px;">
+        ↳ Tab browser ditutup → WebSocket putus → <span style="color:#39FF14;">SSH session TETAP HIDUP</span> di backend goroutine
+      </div>
+    </div>
+
+    <div class="box accent">
+      <div class="box-title">▸ BACKEND <span>STACK</span></div>
+      <div class="stack-row"><div class="stack-label">Language</div><div><span class="chip go">Go 1.22+</span></div></div>
+      <div class="stack-row"><div class="stack-label">SSH/SFTP</div><div><span class="chip go">golang.org/x/crypto/ssh</span></div></div>
+      <div class="stack-row"><div class="stack-label">Router</div><div><span class="chip go">Chi v5</span></div></div>
+      <div class="stack-row"><div class="stack-label">WebSocket</div><div><span class="chip go">Gorilla WS</span></div></div>
+      <div class="stack-row"><div class="stack-label">Database</div><div><span class="chip db">SQLite + GORM</span></div></div>
+      <div class="stack-row"><div class="stack-label">Crypto</div><div><span class="chip sec">AES-256-GCM</span></div></div>
+      <div class="stack-row"><div class="stack-label">Packaging</div><div><span class="chip purple">GoReleaser</span></div></div>
+      <div class="stack-row"><div class="stack-label">Port default</div><div><span class="port-badge">:57321</span></div></div>
+    </div>
+
+    <div class="box accent">
+      <div class="box-title">▸ FRONTEND <span>STACK</span></div>
+      <div class="stack-row"><div class="stack-label">Framework</div><div><span class="chip react">React 18 + Vite</span></div></div>
+      <div class="stack-row"><div class="stack-label">Styling</div><div><span class="chip react">Tailwind CSS v4</span></div></div>
+      <div class="stack-row"><div class="stack-label">Terminal</div><div><span class="chip react">xterm.js v5</span></div></div>
+      <div class="stack-row"><div class="stack-label">State</div><div><span class="chip react">Zustand</span></div></div>
+      <div class="stack-row"><div class="stack-label">Animation</div><div><span class="chip purple">Framer Motion</span></div></div>
+      <div class="stack-row"><div class="stack-label">Drag &amp; Drop</div><div><span class="chip react">react-dropzone</span></div></div>
+      <div class="stack-row"><div class="stack-label">Font</div><div><span class="chip purple">JetBrains Mono</span></div></div>
+      <div class="stack-row"><div class="stack-label">Deploy</div><div><span class="chip purple">Embedded in Go</span></div></div>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="feat">
+      <div class="feat-name"><span class="status-dot"></span>Connection Manager</div>
+      <div class="feat-desc">Save SSH accounts · Groups · Tags · Import/Export .spectre/.json/SSH config</div>
+    </div>
+    <div class="feat">
+      <div class="feat-name">⟩_ Terminal</div>
+      <div class="feat-desc">Multi-tab · Split pane · Broadcast · xterm.js · Persistent sessions</div>
+    </div>
+    <div class="feat">
+      <div class="feat-name">▤ File Manager</div>
+      <div class="feat-desc">SFTP dual-pane · Drag &amp; drop · Parallel upload max 10 · Download</div>
+    </div>
+    <div class="feat">
+      <div class="feat-name">⟳ Proxy &amp; Tunnel</div>
+      <div class="feat-desc">SOCKS5 · Local forward · Remote forward · Dynamic port · Auto-restart</div>
+    </div>
+    <div class="feat">
+      <div class="feat-name">🔑 Key Manager</div>
+      <div class="feat-desc">RSA 4096 · Ed25519 · ECDSA · Import PEM · Attach to connections</div>
+    </div>
+    <div class="feat">
+      <div class="feat-name">🔒 Vault</div>
+      <div class="feat-desc">Master password · AES-256-GCM · PBKDF2 · Zero-knowledge storage</div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;border-top:1px solid #1A0A2A;padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
+    <div style="font-size:9px;color:#2D1B69;letter-spacing:2px;">SINGLE BINARY · WIN / LINUX / macOS · ARM64 + AMD64</div>
+    <div style="font-size:9px;color:#2D1B69;letter-spacing:1px;">"You were never here."</div>
+  </div>
+</div>

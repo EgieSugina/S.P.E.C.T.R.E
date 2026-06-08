@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+:root {
+  --bg-void: #030305;
+  --bg-deep: #07070f;
+  --bg-surface: #0d0d1a;
+  --bg-elevated: #121224;
+  --bg-hover: #1a1a2e;
+  --bg-active: #1e1e35;
+  --purple-dim: #2d1b69;
+  --purple-mid: #5b21b6;
+  --purple-core: #7c3aed;
+  --purple-bright: #a78bfa;
+  --purple-glow: #c4b5fd;
+  --green-term: #39ff14;
+  --cyan-data: #00ffff;
+  --red-alert: #ff2d55;
+  --amber-warn: #ffb700;
+  --blue-info: #3b82f6;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #4a5568;
+  --border-default: rgba(124, 58, 237, 0.15);
+  --border-hover: rgba(124, 58, 237, 0.35);
+  --border-active: rgba(124, 58, 237, 0.6);
+}
+
+@theme {
+  --color-void: var(--bg-void);
+  --color-deep: var(--bg-deep);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-hover: var(--bg-hover);
+  --color-active: var(--bg-active);
+  --color-purple-dim: var(--purple-dim);
+  --color-purple-mid: var(--purple-mid);
+  --color-purple-core: var(--purple-core);
+  --color-purple-bright: var(--purple-bright);
+  --color-purple-glow: var(--purple-glow);
+  --color-term-green: var(--green-term);
+  --color-term-cyan: var(--cyan-data);
+  --color-term-red: var(--red-alert);
+  --color-term-amber: var(--amber-warn);
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --font-display: "Space Grotesk", "DM Mono", sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --radius-brutal: 2px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--purple-mid);
+  border-radius: 2px;
+}
+
+.scanlines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(124, 58, 237, 0.03) 2px,
+    rgba(124, 58, 237, 0.03) 4px
+  );
+  animation: scanlines 8s linear infinite;
+}
+
+@keyframes scanlines {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 4px; }
+}
+
+@keyframes pulse-purple {
+  0%, 100% { box-shadow: 0 0 4px rgba(124, 58, 237, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(124, 58, 237, 0.9), 0 0 40px rgba(124, 58, 237, 0.3); }
+}
+
+@keyframes status-online {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+@keyframes modal-in {
+  0% { transform: translateY(-20px) scale(0.97); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}

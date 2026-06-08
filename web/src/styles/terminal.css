@@ -1,0 +1,7 @@
+.xterm {
+  padding: 8px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--purple-mid);
+}
