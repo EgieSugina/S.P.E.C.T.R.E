@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { clsx } from 'clsx'
 import { motion } from 'framer-motion'
 import {
   Activity,
@@ -23,7 +24,6 @@ import { Button } from '@/components/shared/Button'
 import { DashboardCard } from '@/components/dashboard/DashboardCard'
 import { api } from '@/api/client'
 import { sessionsApi } from '@/api/connections'
-import { SpectreLogo } from '@/components/layout/SpectreLogo'
 
 interface SystemStatus {
   version: string
@@ -164,9 +164,11 @@ export function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-[var(--border-default)] border-l-[3px] border-l-purple-core rounded-brutal px-4 py-3 bg-surface/80"
       >
-        <div className="flex items-center gap-4 min-w-0">
-          <SpectreLogo variant="navbar" className="scale-110 origin-left" />
-          <p className="font-mono text-xs text-text-secondary italic hidden sm:block border-l border-[var(--border-default)] pl-4">
+        <div className="min-w-0">
+          <h1 className="font-display text-lg font-bold tracking-[0.12em] text-purple-bright uppercase">
+            Dashboard
+          </h1>
+          <p className="font-mono text-xs text-text-secondary italic mt-0.5">
             You were never here.
           </p>
         </div>
@@ -317,7 +319,10 @@ export function Dashboard() {
               {recentConnections.map((conn) => (
                 <li
                   key={conn.id}
-                  className="flex items-center justify-between gap-2 bg-elevated border border-[var(--border-default)] rounded-brutal px-3 py-2"
+                  className={clsx(
+                    'flex items-center justify-between gap-2 bg-elevated border border-[var(--border-default)] rounded-brutal px-3 py-2',
+                    !activeConnIds[conn.id] && 'card-disconnected-glitch',
+                  )}
                 >
                   <div className="min-w-0">
                     <p className="font-mono text-xs truncate">{conn.name}</p>

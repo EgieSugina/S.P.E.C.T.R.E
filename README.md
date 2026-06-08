@@ -189,10 +189,10 @@ Full API docs: [SPECTRE-API.md](SPECTRE-API.md)
 
 | Phase | Status | Features |
 |-------|--------|----------|
-| **1 — MVP** | ✅ Current | Binary, theme, connections, terminal, basic SFTP, vault |
-| **2 — Power** | Planned | Parallel upload, SOCKS5, port forward, key manager, groups |
-| **3 — Advanced** | Planned | Split panes, broadcast, jump host, snippets |
-| **4 — Distribution** | Planned | Signed binaries, auto-update, systemd/launchd |
+| **1 — MVP** | ✅ Done | Single binary, SPECTRE theme, connection CRUD, multi-tab terminal, SFTP browse/upload/download, encrypted vault, config import/export |
+| **2 — Power** | 🚧 In progress | **Done:** SOCKS5 proxy, local port forward, proxy connection graph, parallel uploads + drag-and-drop, live SFTP progress (WebSocket), system log panel, global vault unlock modal, enriched dashboard · **Next:** SSH key manager, connection groups UI, known-host verification |
+| **3 — Advanced** | Planned | Split terminal panes, broadcast commands, jump host / bastion, snippet manager, theme customizer |
+| **4 — Distribution** | Planned | Signed release binaries (GoReleaser scaffolded), auto-update, systemd / launchd / Windows Service, Docker image, Homebrew / WinGet / APT |
 
 ## License
 

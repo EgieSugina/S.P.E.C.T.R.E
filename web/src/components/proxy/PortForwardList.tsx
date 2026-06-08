@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { clsx } from 'clsx'
 import { Play, Square, Trash2, Plus } from 'lucide-react'
 import { Tunnel, TunnelStats } from '@/api/tunnels'
 import { Connection } from '@/api/connections'
@@ -111,7 +112,10 @@ export function PortForwardList({
             return (
               <div
                 key={t.id}
-                className="flex items-center gap-3 p-3 bg-surface border border-[var(--border-default)] rounded-brutal border-l-[3px] border-l-purple-core/60"
+                className={clsx(
+                  'flex items-center gap-3 p-3 bg-surface border border-[var(--border-default)] rounded-brutal border-l-[3px] border-l-purple-core/60',
+                  t.status !== 'running' && 'card-disconnected-glitch',
+                )}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">

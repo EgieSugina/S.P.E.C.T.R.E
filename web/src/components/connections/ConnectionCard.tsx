@@ -1,6 +1,7 @@
 import { Connection } from '@/api/connections'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
+import { clsx } from 'clsx'
 import { Terminal, Trash2, Wifi } from 'lucide-react'
 
 interface ConnectionCardProps {
@@ -23,7 +24,12 @@ export function ConnectionCard({
   onTerminal,
 }: ConnectionCardProps) {
   return (
-    <div className="bg-surface border border-[var(--border-default)] border-l-[3px] border-l-purple-core rounded-brutal p-4 hover:border-[var(--border-hover)] transition-colors">
+    <div
+      className={clsx(
+        'bg-surface border border-[var(--border-default)] border-l-[3px] border-l-purple-core rounded-brutal p-4 hover:border-[var(--border-hover)] transition-colors',
+        !isActive && 'card-disconnected-glitch',
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="font-mono text-sm text-[var(--text-primary)]">{connection.name}</h3>

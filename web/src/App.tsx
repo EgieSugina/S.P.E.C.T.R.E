@@ -13,6 +13,7 @@ import { ProxyPage } from '@/pages/Proxy'
 import { Settings } from '@/pages/Settings'
 import { VaultUnlockModal } from '@/components/layout/VaultUnlockModal'
 import { ensureToken } from '@/api/client'
+import { useSettingsStore } from '@/store/settingsStore'
 
 const pageVariants = {
   initial: { opacity: 0, x: 12, filter: 'blur(4px)' },
@@ -48,10 +49,13 @@ function AnimatedRoutes() {
 
 function AppShell() {
   useLogCapture()
+  const fetchSettings = useSettingsStore((s) => s.fetch)
 
   useEffect(() => {
-    ensureToken().catch(console.error)
-  }, [])
+    ensureToken()
+      .then(() => fetchSettings())
+      .catch(console.error)
+  }, [fetchSettings])
 
   return (
     <div className="flex flex-col h-full bg-deep scanlines relative">

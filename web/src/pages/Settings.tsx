@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { clsx } from 'clsx'
 import { useSettingsStore } from '@/store/settingsStore'
+import { THEMES, resolveTheme } from '@/lib/theme'
 import { Input } from '@/components/shared/Input'
 import { Button } from '@/components/shared/Button'
 import { Badge } from '@/components/shared/Badge'
@@ -80,6 +82,48 @@ export function Settings() {
         {message && (
           <p className="font-mono text-xs text-term-green mt-2">{message}</p>
         )}
+      </section>
+
+      <section className="bg-surface border border-[var(--border-default)] border-l-[3px] border-l-purple-core rounded-brutal p-5">
+        <h3 className="font-display text-purple-bright mb-2">Appearance</h3>
+        <p className="font-mono text-xs text-text-muted mb-4">
+          Brutalist dark themes with accent color variants.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {THEMES.map((theme) => {
+            const active = resolveTheme(settings.theme) === theme.id
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                onClick={() => update({ theme: theme.id })}
+                className={clsx(
+                  'p-3 rounded-brutal border text-left transition-colors',
+                  active
+                    ? 'border-purple-core bg-purple-core/10'
+                    : 'border-[var(--border-default)] hover:border-[var(--border-hover)] hover:bg-hover/30'
+                )}
+              >
+                <div className="flex gap-2 mb-2">
+                  <span
+                    className="w-5 h-5 rounded-brutal border border-[var(--border-default)]"
+                    style={{ background: theme.bg }}
+                    aria-hidden
+                  />
+                  <span
+                    className="w-5 h-5 rounded-brutal border border-[var(--border-default)]"
+                    style={{ background: theme.swatch }}
+                    aria-hidden
+                  />
+                </div>
+                <div className="font-mono text-xs text-purple-bright uppercase tracking-wide">
+                  {theme.label}
+                </div>
+                <div className="font-mono text-[10px] text-text-muted mt-1">{theme.description}</div>
+              </button>
+            )
+          })}
+        </div>
       </section>
 
       <section className="bg-surface border border-[var(--border-default)] rounded-brutal p-5">

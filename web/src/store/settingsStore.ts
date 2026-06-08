@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { api } from '@/api/client'
 import { vaultApi } from '@/api/connections'
+import { applyTheme, resolveTheme } from '@/lib/theme'
 
 interface SettingsStore {
   settings: Record<string, string>
@@ -31,11 +32,13 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       vaultLocked: vault.locked,
       vaultConfigured: vault.configured,
     })
+    applyTheme(resolveTheme(settings.theme))
   },
 
   update: async (data) => {
     await api('/settings', { method: 'PUT', body: JSON.stringify(data) })
     set((s) => ({ settings: { ...s.settings, ...data } }))
+    if (data.theme) applyTheme(resolveTheme(data.theme))
   },
 
   unlockVault: async (password) => {

@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { wsUrl } from '@/api/client'
+import { getXtermTheme } from '@/lib/theme'
 
 interface TerminalPaneProps {
   sessionId: string
@@ -20,23 +21,7 @@ export function TerminalPane({ sessionId, isActive }: TerminalPaneProps) {
     if (!containerRef.current) return
 
     const term = new Terminal({
-      theme: {
-        background: '#07070F',
-        foreground: '#E2E8F0',
-        cursor: '#A78BFA',
-        cursorAccent: '#07070F',
-        selectionBackground: 'rgba(124, 58, 237, 0.3)',
-        black: '#0D0D1A',
-        red: '#FF2D55',
-        green: '#39FF14',
-        yellow: '#FFB700',
-        blue: '#3B82F6',
-        magenta: '#A78BFA',
-        cyan: '#00FFFF',
-        white: '#E2E8F0',
-        brightBlack: '#4A5568',
-        brightMagenta: '#C4B5FD',
-      },
+      theme: getXtermTheme(),
       fontFamily: '"JetBrains Mono", "Fira Code", monospace',
       fontSize: 13,
       lineHeight: 1.4,

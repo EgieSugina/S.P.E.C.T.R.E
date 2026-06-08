@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { clsx } from 'clsx'
 import { Play, Square, Trash2, Plus } from 'lucide-react'
 import { useTunnelStore } from '@/store/tunnelStore'
 import { useConnectionStore } from '@/store/connectionStore'
@@ -149,11 +150,13 @@ export function ProxyManager() {
                       setSelectedId(t.id)
                     }
                   }}
-                  className={`flex items-center gap-3 p-4 bg-surface border rounded-brutal border-l-[3px] transition-colors cursor-pointer ${
+                  className={clsx(
+                    'flex items-center gap-3 p-4 bg-surface border rounded-brutal border-l-[3px] transition-colors cursor-pointer',
                     selected
                       ? 'border-purple-core/60 border-l-purple-bright bg-active/40'
-                      : 'border-[var(--border-default)] border-l-purple-core hover:bg-hover/30'
-                  }`}
+                      : 'border-[var(--border-default)] border-l-purple-core hover:bg-hover/30',
+                    t.status !== 'running' && 'card-disconnected-glitch',
+                  )}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
