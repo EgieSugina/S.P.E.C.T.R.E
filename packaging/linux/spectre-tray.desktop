@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=SPECTRE
+GenericName=SSH Manager Tray
+Comment=S.P.E.C.T.R.E system tray — start/stop daemon from KDE panel
+Exec=spectre tray --no-browser
+Icon=spectre
+Terminal=false
+Categories=Network;System;
+StartupNotify=false
+X-KDE-StartupNotify=false
+X-KDE-autostart-after=panel
+X-GNOME-Autostart-enabled=true

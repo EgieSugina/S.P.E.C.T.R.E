@@ -14,6 +14,7 @@ SPECTRE is a local-first SSH/SFTP manager that runs as a **single Go binary** wi
 - **Encrypted Vault** — AES-256-GCM password encryption with PBKDF2 master password
 - **Config Import/Export** — JSON and encrypted `.spectre` format
 - **SPECTRE Theme** — Brutalist dark purple hacker aesthetic with Framer Motion transitions
+- **Linux System Tray** — KDE status-area ghost icon to start/stop the background daemon, open the UI, and show desktop notifications
 
 ## Architecture
 
@@ -47,7 +48,7 @@ See [spectre_architecture_diagram.html](spectre_architecture_diagram.html) for t
 
 - **Go 1.23+** with CGO enabled (requires a C compiler for SQLite)
 - **Node.js 20+** and **pnpm 9+** (development/build only — not needed to run the binary)
-- Linux: `gcc` / `base-devel`
+- Linux: `gcc` / `base-devel`; system tray requires KDE/Plasma (status notifier area)
 - macOS: Xcode Command Line Tools
 
 ## Quick Start
@@ -119,7 +120,48 @@ spectre start --config ~/.spectre  # Custom config directory
 spectre stop                     # Stop daemon
 spectre status                   # Check daemon status
 spectre open                     # Open browser to UI
+spectre tray                     # Run system tray icon (Linux/KDE)
+spectre tray --install-autostart # Autostart tray icon at login
+spectre tray --uninstall-autostart  # Remove tray autostart entry
 ```
+
+### Daemon mode
+
+Background daemon keeps SSH sessions alive after the browser closes. State is stored under the config directory (`~/.spectre` by default):
+
+- `spectre.pid` — running process ID
+- `runtime.json` — bind address, port, and PID
+
+Start in the background, then check or stop from the CLI or tray:
+
+```bash
+spectre start --daemon
+spectre status
+spectre open
+spectre stop
+```
+
+### Linux system tray
+
+On Linux (KDE/Plasma), `spectre tray` shows a ghost icon in the status area. The icon is embedded from transparent PNGs (22/32/64/256 px) derived from `ghost-svgrepo-com.svg` in `internal/tray/icons/`.
+
+Tray menu actions:
+
+- **Open SPECTRE** — open the web UI (daemon must be running)
+- **Start Daemon** / **Stop Daemon** — control the background server
+- **Quit Tray** — remove the tray icon (does not stop the daemon)
+
+Tray flags mirror server options where relevant (`--port`, `--bind`, `--config`). Browser auto-open is off by default for tray-driven starts (`--no-browser`).
+
+Install autostart so the tray icon appears after login:
+
+```bash
+spectre tray --install-autostart
+```
+
+This writes `~/.config/autostart/spectre-tray.desktop` and installs the app icon to `~/.local/share/icons/hicolor/256x256/apps/spectre.png`. A reference desktop entry ships at `packaging/linux/spectre-tray.desktop`. Remove with `spectre tray --uninstall-autostart`.
+
+On non-Linux platforms, `spectre tray` returns an error (stub build).
 
 ### Environment Variables
 
@@ -151,11 +193,14 @@ spectre/
 ├── cmd/spectre/main.go          # CLI entry point
 ├── internal/
 │   ├── server/                  # HTTP server, auth, embed, handlers
+│   ├── daemon/                  # Background daemon (PID, runtime state)
+│   ├── tray/                    # Linux system tray icon and autostart
 │   ├── ssh/                     # Connection pool, PTY, WebSocket bridge
 │   ├── sftp/                    # File operations, upload queue
 │   ├── store/                   # SQLite models and CRUD
 │   ├── crypto/                  # Vault and key utilities
 │   └── config/                  # Import/export
+├── packaging/linux/             # Desktop entry for tray autostart
 ├── web/                         # React frontend
 │   ├── src/
 │   │   ├── api/                 # API client
@@ -192,7 +237,7 @@ Full API docs: [SPECTRE-API.md](SPECTRE-API.md)
 | **1 — MVP** | ✅ Done | Single binary, SPECTRE theme, connection CRUD, multi-tab terminal, SFTP browse/upload/download, encrypted vault, config import/export |
 | **2 — Power** | 🚧 In progress | **Done:** SOCKS5 proxy, local port forward, proxy connection graph, parallel uploads + drag-and-drop, live SFTP progress (WebSocket), system log panel, global vault unlock modal, enriched dashboard · **Next:** SSH key manager, connection groups UI, known-host verification |
 | **3 — Advanced** | Planned | Split terminal panes, broadcast commands, jump host / bastion, snippet manager, theme customizer |
-| **4 — Distribution** | Planned | Signed release binaries (GoReleaser scaffolded), auto-update, systemd / launchd / Windows Service, Docker image, Homebrew / WinGet / APT |
+| **4 — Distribution** | Planned | Signed release binaries (GoReleaser scaffolded), auto-update, Linux KDE tray autostart (**done**), systemd / launchd / Windows Service, Docker image, Homebrew / WinGet / APT |
 
 ## License
 

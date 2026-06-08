@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"syscall"
@@ -14,15 +13,19 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"spectre/internal/daemon"
 	"spectre/internal/server"
+	"spectre/internal/tray"
 )
 
 var (
 	port      int
 	bind      string
-	daemon    bool
+	daemonFlag bool
 	noBrowser bool
 	configDir string
+	installTrayAutostart bool
+	uninstallTrayAutostart bool
 )
 
 func main() {
@@ -44,45 +47,76 @@ var startCmd = &cobra.Command{
 	RunE:  runStart,
 }
 
+var trayCmd = &cobra.Command{
+	Use:   "tray",
+	Short: "Run KDE system tray icon to start/stop the daemon",
+	Long:  "Shows a ghost icon in the KDE status area with start, stop, and open actions.",
+	RunE:  runTray,
+}
+
 func init() {
 	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(stopCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(openCmd)
+	rootCmd.AddCommand(trayCmd)
 
 	flags := startCmd.Flags()
-	flags.IntVarP(&port, "port", "p", envInt("SPECTRE_PORT", 57321), "HTTP port")
-	flags.StringVar(&bind, "bind", envStr("SPECTRE_BIND", "127.0.0.1"), "Bind address")
-	flags.BoolVar(&daemon, "daemon", false, "Run as background daemon")
+	flags.IntVarP(&port, "port", "p", envInt("SPECTRE_PORT", daemon.DefaultPort), "HTTP port")
+	flags.StringVar(&bind, "bind", envStr("SPECTRE_BIND", daemon.DefaultBind), "Bind address")
+	flags.BoolVar(&daemonFlag, "daemon", false, "Run as background daemon")
 	flags.BoolVar(&noBrowser, "no-browser", envBool("SPECTRE_NO_BROWSER", false), "Don't open browser")
 	flags.StringVar(&configDir, "config", envStr("SPECTRE_CONFIG", ""), "Config directory")
 
-	rootCmd.Flags().IntVarP(&port, "port", "p", envInt("SPECTRE_PORT", 57321), "HTTP port")
-	rootCmd.Flags().StringVar(&bind, "bind", envStr("SPECTRE_BIND", "127.0.0.1"), "Bind address")
-	rootCmd.Flags().BoolVar(&daemon, "daemon", false, "Run as background daemon")
+	rootCmd.Flags().IntVarP(&port, "port", "p", envInt("SPECTRE_PORT", daemon.DefaultPort), "HTTP port")
+	rootCmd.Flags().StringVar(&bind, "bind", envStr("SPECTRE_BIND", daemon.DefaultBind), "Bind address")
+	rootCmd.Flags().BoolVar(&daemonFlag, "daemon", false, "Run as background daemon")
 	rootCmd.Flags().BoolVar(&noBrowser, "no-browser", envBool("SPECTRE_NO_BROWSER", false), "Don't open browser")
 	rootCmd.Flags().StringVar(&configDir, "config", envStr("SPECTRE_CONFIG", ""), "Config directory")
+
+	trayFlags := trayCmd.Flags()
+	trayFlags.IntVarP(&port, "port", "p", envInt("SPECTRE_PORT", daemon.DefaultPort), "HTTP port for daemon")
+	trayFlags.StringVar(&bind, "bind", envStr("SPECTRE_BIND", daemon.DefaultBind), "Bind address for daemon")
+	trayFlags.StringVar(&configDir, "config", envStr("SPECTRE_CONFIG", ""), "Config directory")
+	trayFlags.BoolVar(&noBrowser, "no-browser", true, "Don't open browser when starting from tray")
+	trayFlags.BoolVar(&installTrayAutostart, "install-autostart", false, "Install KDE autostart entry")
+	trayFlags.BoolVar(&uninstallTrayAutostart, "uninstall-autostart", false, "Remove KDE autostart entry")
 }
 
 func runStart(cmd *cobra.Command, args []string) error {
-	if daemon && os.Getenv("SPECTRE_DAEMON") != "1" {
+	if daemonFlag && os.Getenv("SPECTRE_DAEMON") != "1" {
 		return runAsDaemon()
 	}
 
-	if configDir == "" {
-		home, _ := os.UserHomeDir()
-		configDir = filepath.Join(home, ".spectre")
+	dir := daemon.ResolveConfigDir(configDir)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
 	}
 
-	srv, err := server.New(bind, port, configDir)
+	srv, err := server.New(bind, port, dir)
 	if err != nil {
 		return err
+	}
+
+	if os.Getenv("SPECTRE_DAEMON") == "1" {
+		pid := os.Getpid()
+		if err := os.WriteFile(daemon.PidPath(dir), []byte(strconv.Itoa(pid)), 0o600); err != nil {
+			return err
+		}
+		if err := daemon.WriteRuntime(dir, daemon.RuntimeInfo{
+			Bind: bind,
+			Port: port,
+			PID:  pid,
+		}); err != nil {
+			return err
+		}
+		defer daemon.RemoveRuntimeArtifacts(dir)
 	}
 
 	if !noBrowser {
 		go func() {
 			time.Sleep(500 * time.Millisecond)
-			openBrowser(fmt.Sprintf("http://%s:%d", bind, port))
+			openBrowser(daemon.URL(dir))
 		}()
 	}
 
@@ -92,25 +126,45 @@ func runStart(cmd *cobra.Command, args []string) error {
 	return srv.Start(ctx)
 }
 
+func runTray(cmd *cobra.Command, args []string) error {
+	executable, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	if uninstallTrayAutostart {
+		if err := tray.UninstallAutostart(); err != nil {
+			return err
+		}
+		fmt.Println("[SPECTRE] KDE autostart removed")
+		return nil
+	}
+
+	if installTrayAutostart {
+		if err := tray.InstallAutostart(executable); err != nil {
+			return err
+		}
+		fmt.Println("[SPECTRE] KDE autostart installed (~/.config/autostart/spectre-tray.desktop)")
+		return nil
+	}
+
+	return tray.Run(tray.Config{
+		Port:      port,
+		Bind:      bind,
+		ConfigDir: configDir,
+	})
+}
+
 var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the SPECTRE daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		home, _ := os.UserHomeDir()
-		pidPath := filepath.Join(home, ".spectre", "spectre.pid")
-		data, err := os.ReadFile(pidPath)
-		if err != nil {
-			return fmt.Errorf("daemon not running")
-		}
-		pid, err := strconv.Atoi(string(data))
-		if err != nil {
+		if err := daemon.Stop(configDir); err != nil {
 			return err
 		}
-		proc, err := os.FindProcess(pid)
-		if err != nil {
-			return err
-		}
-		return proc.Signal(syscall.SIGTERM)
+		daemon.RemoveRuntimeArtifacts(daemon.ResolveConfigDir(configDir))
+		fmt.Println("[SPECTRE] Daemon stopped")
+		return nil
 	},
 }
 
@@ -118,14 +172,12 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Check daemon status",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		home, _ := os.UserHomeDir()
-		pidPath := filepath.Join(home, ".spectre", "spectre.pid")
-		data, err := os.ReadFile(pidPath)
-		if err != nil {
+		running, pid := daemon.Status(configDir)
+		if !running {
 			fmt.Println("SPECTRE is not running")
 			return nil
 		}
-		fmt.Printf("SPECTRE is running (PID %s)\n", string(data))
+		fmt.Printf("SPECTRE is running (PID %d) at %s\n", pid, daemon.URL(daemon.ResolveConfigDir(configDir)))
 		return nil
 	},
 }
@@ -134,43 +186,29 @@ var openCmd = &cobra.Command{
 	Use:   "open",
 	Short: "Open SPECTRE in browser",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		p := port
-		if p == 0 {
-			p = 57321
+		dir := daemon.ResolveConfigDir(configDir)
+		if !daemon.IsRunning(dir) {
+			return fmt.Errorf("daemon not running")
 		}
-		b := bind
-		if b == "" {
-			b = "127.0.0.1"
-		}
-		openBrowser(fmt.Sprintf("http://%s:%d", b, p))
+		openBrowser(daemon.URL(dir))
 		return nil
 	},
 }
 
 func runAsDaemon() error {
-	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, ".spectre")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	opts := daemon.Options{
+		Port:      port,
+		Bind:      bind,
+		ConfigDir: configDir,
+	}
+	if err := daemon.Start(opts); err != nil {
 		return err
 	}
-	pidPath := filepath.Join(dir, "spectre.pid")
-
-	executable, err := os.Executable()
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command(executable, "start", "--no-browser")
-	cmd.Env = append(os.Environ(), "SPECTRE_DAEMON=1")
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	if err := os.WriteFile(pidPath, []byte(strconv.Itoa(cmd.Process.Pid)), 0o600); err != nil {
-		return err
-	}
-	fmt.Printf("[SPECTRE] Daemon started (PID %d)\n", cmd.Process.Pid)
+	dir := daemon.ResolveConfigDir(configDir)
+	pid, _ := daemon.ReadPID(dir)
+	fmt.Printf("[SPECTRE] Daemon started (PID %d)\n", pid)
+	fmt.Printf("[SPECTRE] Access: %s\n", daemon.URL(dir))
+	fmt.Println("[SPECTRE] Tip: run `spectre tray --install-autostart` for KDE panel control")
 	return nil
 }
 
