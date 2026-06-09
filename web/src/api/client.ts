@@ -23,9 +23,11 @@ export async function ensureToken(): Promise<string> {
 
 export class ApiError extends Error {
   code: string
-  constructor(code: string, message: string) {
+  details?: Record<string, unknown>
+  constructor(code: string, message: string, details?: Record<string, unknown>) {
     super(message)
     this.code = code
+    this.details = details
   }
 }
 
@@ -85,7 +87,7 @@ export async function api<T>(
       source: 'api',
       detail: err.message || res.statusText,
     })
-    throw new ApiError(err.code || 'UNKNOWN', err.message || res.statusText)
+    throw new ApiError(err.code || 'UNKNOWN', err.message || res.statusText, err)
   }
 
   if (res.status === 204) {

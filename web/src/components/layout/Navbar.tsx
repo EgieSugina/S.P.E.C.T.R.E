@@ -7,6 +7,7 @@ import {
   FolderOpen,
   RefreshCw,
   Settings,
+  KeyRound,
   Menu,
   X,
   Lock,
@@ -24,6 +25,7 @@ const nav = [
   { to: '/terminal', icon: Terminal, label: 'Terminal' },
   { to: '/files', icon: FolderOpen, label: 'Files' },
   { to: '/proxy', icon: RefreshCw, label: 'Proxy' },
+  { to: '/keys', icon: KeyRound, label: 'Keys' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
 

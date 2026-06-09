@@ -4,6 +4,8 @@ import { Input } from '@/components/shared/Input'
 import { Button } from '@/components/shared/Button'
 import { connectionsApi } from '@/api/connections'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useKeyStore } from '@/store/keyStore'
+import { useGroupStore } from '@/store/groupStore'
 import { ApiError } from '@/api/client'
 
 interface AddConnectionModalProps {
@@ -14,6 +16,8 @@ interface AddConnectionModalProps {
 
 export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionModalProps) {
   const { vaultLocked, vaultConfigured, fetch: fetchSettings, openVaultModal } = useSettingsStore()
+  const { keys, fetch: fetchKeys } = useKeyStore()
+  const { groups, fetch: fetchGroups } = useGroupStore()
   const [form, setForm] = useState({
     name: '',
     host: '',
@@ -21,6 +25,8 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
     username: '',
     password: '',
     auth_type: 'password',
+    private_key_id: '',
+    group_id: '',
     notes: '',
   })
   const [loading, setLoading] = useState(false)
@@ -29,10 +35,13 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
   useEffect(() => {
     if (open) {
       fetchSettings()
+      fetchKeys()
+      fetchGroups()
     }
-  }, [open, fetchSettings])
+  }, [open, fetchSettings, fetchKeys, fetchGroups])
 
   const vaultBlocked = vaultLocked || !vaultConfigured
+  const usesKey = form.auth_type === 'key'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,17 +49,36 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
       openVaultModal()
       return
     }
-    if (form.auth_type === 'password' && !form.password) {
+    if (usesKey && !form.private_key_id) {
+      setError('Select an SSH key')
+      return
+    }
+    if (!usesKey && !form.password) {
       setError('Password is required')
       return
     }
     setLoading(true)
     setError('')
     try {
-      await connectionsApi.create(form)
+      await connectionsApi.create({
+        ...form,
+        private_key_id: usesKey ? form.private_key_id : undefined,
+        password: usesKey ? undefined : form.password,
+        group_id: form.group_id || undefined,
+      })
       onCreated()
       onClose()
-      setForm({ name: '', host: '', port: 22, username: '', password: '', auth_type: 'password', notes: '' })
+      setForm({
+        name: '',
+        host: '',
+        port: 22,
+        username: '',
+        password: '',
+        auth_type: 'password',
+        private_key_id: '',
+        group_id: '',
+        notes: '',
+      })
     } catch (err) {
       if (err instanceof ApiError) {
         setError(`[${err.code}] ${err.message}`)
@@ -91,13 +119,64 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
           <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
         </div>
         <div>
-          <label className="font-mono text-[10px] text-text-muted uppercase">Password</label>
-          <Input
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            required={form.auth_type === 'password'}
-          />
+          <label className="font-mono text-[10px] text-text-muted uppercase">Authentication</label>
+          <select
+            value={form.auth_type}
+            onChange={(e) => setForm({ ...form, auth_type: e.target.value })}
+            className="w-full mt-1 bg-deep border border-[var(--border-default)] rounded-brutal px-3 py-2 font-mono text-xs text-[var(--text-primary)] focus:border-purple-core/60 focus:outline-none"
+          >
+            <option value="password">Password</option>
+            <option value="key">SSH Key</option>
+          </select>
+        </div>
+        {usesKey ? (
+          <div>
+            <label className="font-mono text-[10px] text-text-muted uppercase">SSH Key</label>
+            {keys.length === 0 ? (
+              <p className="font-mono text-xs text-text-muted mt-1">
+                No keys available. Generate or import one in the Keys page.
+              </p>
+            ) : (
+              <select
+                value={form.private_key_id}
+                onChange={(e) => setForm({ ...form, private_key_id: e.target.value })}
+                required
+                className="w-full mt-1 bg-deep border border-[var(--border-default)] rounded-brutal px-3 py-2 font-mono text-xs text-[var(--text-primary)] focus:border-purple-core/60 focus:outline-none"
+              >
+                <option value="">Select key...</option>
+                {keys.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.name} ({k.fingerprint.slice(0, 16)}…)
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        ) : (
+          <div>
+            <label className="font-mono text-[10px] text-text-muted uppercase">Password</label>
+            <Input
+              type="password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              required
+            />
+          </div>
+        )}
+        <div>
+          <label className="font-mono text-[10px] text-text-muted uppercase">Group</label>
+          <select
+            value={form.group_id}
+            onChange={(e) => setForm({ ...form, group_id: e.target.value })}
+            className="w-full mt-1 bg-deep border border-[var(--border-default)] rounded-brutal px-3 py-2 font-mono text-xs text-[var(--text-primary)] focus:border-purple-core/60 focus:outline-none"
+          >
+            <option value="">No group</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="font-mono text-[10px] text-text-muted uppercase">Notes</label>

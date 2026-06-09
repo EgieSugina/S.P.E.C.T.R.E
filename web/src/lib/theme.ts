@@ -1,4 +1,4 @@
-export type ThemeId = 'spectre' | 'pink' | 'green'
+export type ThemeId = 'spectre' | 'pure-dark' | 'pink' | 'green'
 
 export const THEMES: {
   id: ThemeId
@@ -13,6 +13,13 @@ export const THEMES: {
     description: 'Default SPECTRE ops palette',
     swatch: '#7c3aed',
     bg: '#07070f',
+  },
+  {
+    id: 'pure-dark',
+    label: 'Pure Dark',
+    description: 'Neutral blacks and grays, no accent tint',
+    swatch: '#e5e5e5',
+    bg: '#0a0a0a',
   },
   {
     id: 'pink',
@@ -32,8 +39,10 @@ export const THEMES: {
 
 export const THEME_STORAGE_KEY = 'spectre-theme'
 
+const VALID_THEMES: ThemeId[] = ['spectre', 'pure-dark', 'pink', 'green']
+
 export function resolveTheme(value?: string | null): ThemeId {
-  if (value === 'pink' || value === 'green' || value === 'spectre') return value
+  if (VALID_THEMES.includes(value as ThemeId)) return value as ThemeId
   return 'spectre'
 }
 
@@ -44,7 +53,7 @@ export function applyTheme(id: ThemeId) {
 
 export function getStoredTheme(): ThemeId | null {
   const value = localStorage.getItem(THEME_STORAGE_KEY)
-  return value === 'pink' || value === 'green' || value === 'spectre' ? value : null
+  return VALID_THEMES.includes(value as ThemeId) ? (value as ThemeId) : null
 }
 
 function cssVar(name: string, fallback: string): string {

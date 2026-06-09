@@ -10,6 +10,7 @@ import { Connections } from '@/pages/Connections'
 import { TerminalPage } from '@/pages/Terminal'
 import { FileManagerPage } from '@/pages/FileManager'
 import { ProxyPage } from '@/pages/Proxy'
+import { KeysPage } from '@/pages/Keys'
 import { Settings } from '@/pages/Settings'
 import { VaultUnlockModal } from '@/components/layout/VaultUnlockModal'
 import { ensureToken } from '@/api/client'
@@ -40,6 +41,7 @@ function AnimatedRoutes() {
           <Route path="/terminal" element={<TerminalPage />} />
           <Route path="/files" element={<FileManagerPage />} />
           <Route path="/proxy" element={<ProxyPage />} />
+          <Route path="/keys" element={<KeysPage />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </motion.div>

@@ -1,5 +1,7 @@
 package store
 
+import "gorm.io/gorm"
+
 func (db *DB) ListGroups() ([]Group, error) {
 	var groups []Group
 	err := db.Order("sort_order asc, name asc").Find(&groups).Error
@@ -23,5 +25,10 @@ func (db *DB) UpdateGroup(g *Group) error {
 }
 
 func (db *DB) DeleteGroup(id string) error {
-	return db.Delete(&Group{}, "id = ?", id).Error
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&Connection{}).Where("group_id = ?", id).Update("group_id", nil).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&Group{}, "id = ?", id).Error
+	})
 }

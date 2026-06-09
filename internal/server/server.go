@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -82,6 +83,7 @@ func New(bind string, port int, configDir string) (*Server, error) {
 		sftpHub:   newSFTPWSHub(),
 		systemHub: newSystemWSHub(),
 	}
+	srv.sshMgr.SetHostKeyCallback(ssh.NewHostKeyCallback(db))
 	srv.tunnelMgr = tunnel.NewManager(srv.ensureSSHForTunnel)
 	return srv, nil
 }
@@ -131,6 +133,16 @@ func (s *Server) Start(ctx context.Context) error {
 			r.Post("/groups", s.handleCreateGroup)
 			r.Put("/groups/{id}", s.handleUpdateGroup)
 			r.Delete("/groups/{id}", s.handleDeleteGroup)
+
+			r.Get("/known-hosts", s.handleListKnownHosts)
+			r.Post("/known-hosts/trust", s.handleTrustKnownHost)
+			r.Delete("/known-hosts/{id}", s.handleDeleteKnownHost)
+
+			r.Get("/keys", s.handleListKeys)
+			r.Post("/keys/generate", s.handleGenerateKey)
+			r.Post("/keys/import", s.handleImportKey)
+			r.Get("/keys/{id}/public", s.handleGetKeyPublic)
+			r.Delete("/keys/{id}", s.handleDeleteKey)
 
 			r.Get("/sessions", s.handleListSessions)
 			r.Post("/sessions", s.handleCreateSession)
@@ -391,6 +403,18 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 	connID, err := s.sshMgr.Connect(conn.ID, cfg)
 	if err != nil {
+		var mismatch *ssh.HostKeyMismatchError
+		if errors.As(err, &mismatch) {
+			writeErrorWithDetails(w, http.StatusConflict, "HOST_KEY_MISMATCH", err.Error(), map[string]interface{}{
+				"host":                  mismatch.Host,
+				"port":                  mismatch.Port,
+				"expected_fingerprint":  mismatch.Expected,
+				"received_fingerprint":  mismatch.Received,
+				"received_key":          mismatch.ReceivedKey,
+				"key_type":              mismatch.KeyType,
+			})
+			return
+		}
 		code, status := classifySSHConnectError(err)
 		writeError(w, status, code, err.Error())
 		return

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { SPECTRE_SIDEBAR_MARK, SPECTRE_SUBTITLE, SPECTRE_TITLE } from '@/constants/branding'
 import { clsx } from 'clsx'
+import { GlitchText } from '@/components/layout/GlitchText'
 
 const letters = SPECTRE_TITLE.split('')
 
@@ -31,17 +32,14 @@ interface SpectreLogoProps {
 
 function AnimatedTitle({ sizeClass }: { sizeClass: string }) {
   return (
-    <motion.span
-      className={clsx(
-        'spectre-title spectre-title-glitch-idle relative inline-flex flex-row items-baseline gap-0',
-        sizeClass
-      )}
+    <GlitchText
+      text={SPECTRE_TITLE}
+      className={clsx('relative', sizeClass)}
       variants={containerVariants}
       initial="hidden"
       animate="visible"
       aria-label={SPECTRE_TITLE}
     >
-      <span className="spectre-shimmer-overlay pointer-events-none absolute inset-0" aria-hidden />
       {letters.map((char, i) => (
         <motion.span
           key={`${char}-${i}`}
@@ -54,7 +52,7 @@ function AnimatedTitle({ sizeClass }: { sizeClass: string }) {
           {char}
         </motion.span>
       ))}
-    </motion.span>
+    </GlitchText>
   )
 }
 
@@ -79,16 +77,16 @@ export function SpectreLogo({ variant = 'hero', className }: SpectreLogoProps) {
         className={clsx('mb-4 flex shrink-0 items-center justify-center', className)}
         title={`${SPECTRE_TITLE}\n${SPECTRE_SUBTITLE}`}
       >
-        <motion.span
-          className="spectre-title spectre-title-glitch-idle relative font-display text-xl font-bold text-purple-bright"
+        <GlitchText
+          text={SPECTRE_SIDEBAR_MARK}
+          className="relative font-display text-xl font-bold text-purple-bright"
           initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
           aria-label={SPECTRE_TITLE}
         >
           {SPECTRE_SIDEBAR_MARK}
-          <span className="spectre-shimmer-overlay pointer-events-none absolute inset-0" aria-hidden />
-        </motion.span>
+        </GlitchText>
       </div>
     )
   }

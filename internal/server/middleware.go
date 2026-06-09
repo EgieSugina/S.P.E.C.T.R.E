@@ -36,3 +36,15 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 		"message": message,
 	})
 }
+
+func writeErrorWithDetails(w http.ResponseWriter, status int, code, message string, details map[string]interface{}) {
+	payload := map[string]interface{}{
+		"error":   true,
+		"code":    code,
+		"message": message,
+	}
+	for k, v := range details {
+		payload[k] = v
+	}
+	writeJSON(w, status, payload)
+}

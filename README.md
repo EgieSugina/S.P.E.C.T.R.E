@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/EgieSugina/S.P.E.C.T.R.E/main/ghost-svgrepo-com.svg" alt="S.P.E.C.T.R.E logo" width="128">
+</p>
+
 # S.P.E.C.T.R.E
 
 **Secure Proxy & Encrypted Connection Tunneling Remote Environment**
@@ -6,15 +10,30 @@
 
 SPECTRE is a local-first SSH/SFTP manager that runs as a **single Go binary** with an embedded React web UI. SSH sessions persist in the backend daemon — close your browser tab and the connection stays alive.
 
-## Features (MVP)
+## Features
 
-- **Connection Manager** — CRUD for SSH accounts, groups, encrypted credential storage
+### Core
+- **Connection Manager** — CRUD for SSH accounts, sidebar groups/folders, encrypted credential storage
 - **Terminal** — Multi-tab xterm.js terminals over WebSocket with session persistence
-- **SFTP File Manager** — Browse, upload, download, mkdir, delete, rename remote files
+- **SFTP File Manager** — Browse, upload, download, mkdir, delete, rename; drag-and-drop with parallel upload queue
 - **Encrypted Vault** — AES-256-GCM password encryption with PBKDF2 master password
 - **Config Import/Export** — JSON and encrypted `.spectre` format
-- **SPECTRE Theme** — Brutalist dark purple hacker aesthetic with Framer Motion transitions
-- **Linux System Tray** — KDE status-area ghost icon to start/stop the background daemon, open the UI, and show desktop notifications
+- **Themes** — Default SPECTRE dark purple, plus Pure Dark (neutral grays), pink, and green variants; selectable in Settings
+
+### Power (Phase 2)
+- **SOCKS5 & Port Forwarding** — Proxy manager with connection graph visualization
+- **SSH Key Manager** — Generate (Ed25519/RSA), import PEM keys, assign to connections
+- **Connection Groups** — Sidebar grouping, create/edit/delete groups, assign connections
+- **Known Host Verification** — Trust-on-first-use with host key store; mismatch prompts before connect
+- **Live SFTP Progress** — WebSocket upload progress and queue panel
+- **System Log Panel** — Captured API and process logs in the UI
+- **Dashboard** — Active connections, sessions, tunnels at a glance
+- **Global Vault Unlock Modal** — Unlock vault from anywhere in the app
+
+### Platform
+- **Background Daemon** — SSH sessions survive browser tab close (`spectre start --daemon`)
+- **Linux System Tray** — KDE status-area ghost icon to start/stop daemon, open UI, desktop notifications
+- **Tray Autostart** — `spectre tray --install-autostart` for login startup
 
 ## Architecture
 
@@ -177,7 +196,7 @@ On non-Linux platforms, `spectre tray` returns an error (stub build).
 1. **Local-only by default** — Binds to `127.0.0.1:57321`. Use `--bind 0.0.0.0` only if you understand the risk.
 2. **Session token** — 256-bit random token generated on start, stored in `~/.spectre/session.token`. All API requests require `X-SPECTRE-Token` header.
 3. **Encrypted vault** — SSH passwords encrypted with AES-256-GCM. Master password is never stored on disk (only a PBKDF2 hash for verification).
-4. **Host key verification** — Currently uses `InsecureIgnoreHostKey` (MVP). Known hosts support planned for Phase 2.
+4. **Host key verification** — Trust-on-first-use: unknown keys are stored automatically on first connect. If a host key changes, connection is blocked and a trust prompt is shown. Manage stored keys via the known-hosts API.
 
 ### First-time setup
 
@@ -224,8 +243,15 @@ All requests require header: `X-SPECTRE-Token: <token>`
 Key endpoints:
 - `GET /connections` — List SSH accounts
 - `POST /connections/:id/connect` — Open SSH connection
+- `GET /groups` — List connection groups
+- `POST /groups` — Create group
+- `GET /keys` — List SSH keypairs
+- `POST /keys/generate` — Generate new keypair
+- `GET /known-hosts` — List trusted host keys
+- `POST /known-hosts/trust` — Accept a new/changed host key
 - `POST /sessions` — Create terminal session
 - `GET /sftp/:conn_id/list?path=/` — List remote directory
+- `GET /tunnels` — List proxy/tunnel configs
 - `WS /ws/terminal/:session_id` — Terminal I/O
 
 Full API docs: [SPECTRE-API.md](SPECTRE-API.md)
@@ -235,9 +261,9 @@ Full API docs: [SPECTRE-API.md](SPECTRE-API.md)
 | Phase | Status | Features |
 |-------|--------|----------|
 | **1 — MVP** | ✅ Done | Single binary, SPECTRE theme, connection CRUD, multi-tab terminal, SFTP browse/upload/download, encrypted vault, config import/export |
-| **2 — Power** | 🚧 In progress | **Done:** SOCKS5 proxy, local port forward, proxy connection graph, parallel uploads + drag-and-drop, live SFTP progress (WebSocket), system log panel, global vault unlock modal, enriched dashboard · **Next:** SSH key manager, connection groups UI, known-host verification |
+| **2 — Power** | ✅ Done | SOCKS5 proxy, local port forward, proxy connection graph, parallel uploads + drag-and-drop, live SFTP progress (WebSocket), system log panel, global vault unlock modal, enriched dashboard, SSH key manager, connection groups UI, known-host verification (TOFU + mismatch prompts) |
 | **3 — Advanced** | Planned | Split terminal panes, broadcast commands, jump host / bastion, snippet manager, theme customizer |
-| **4 — Distribution** | Planned | Signed release binaries (GoReleaser scaffolded), auto-update, Linux KDE tray autostart (**done**), systemd / launchd / Windows Service, Docker image, Homebrew / WinGet / APT |
+| **4 — Distribution** | 🚧 In progress | Signed release binaries (GoReleaser scaffolded), auto-update, Linux KDE tray + autostart (**done**), systemd / launchd / Windows Service, Docker image, Homebrew / WinGet / APT |
 
 ## License
 

@@ -3,7 +3,7 @@ import { api } from './client'
 export interface Connection {
   id: string
   name: string
-  group_id?: string
+  group_id?: string | null
   host: string
   port: number
   username: string
@@ -44,6 +44,8 @@ export const groupsApi = {
   list: () => api<Group[]>('/groups'),
   create: (data: Partial<Group>) =>
     api<Group>('/groups', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<Group>) =>
+    api<Group>(`/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) => api(`/groups/${id}`, { method: 'DELETE' }),
 }
 

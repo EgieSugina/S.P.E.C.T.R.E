@@ -38,19 +38,25 @@ type ManagedConnection struct {
 }
 
 type Manager struct {
-	connections map[string]*ManagedConnection
-	sessions    map[string]*TerminalSession
-	mu          sync.RWMutex
-	sessMu      sync.RWMutex
+	connections     map[string]*ManagedConnection
+	sessions        map[string]*TerminalSession
+	hostKeyCallback ssh.HostKeyCallback
+	mu              sync.RWMutex
+	sessMu          sync.RWMutex
 }
 
 func NewManager() *Manager {
 	m := &Manager{
-		connections: make(map[string]*ManagedConnection),
-		sessions:    make(map[string]*TerminalSession),
+		connections:     make(map[string]*ManagedConnection),
+		sessions:        make(map[string]*TerminalSession),
+		hostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	go m.keepAliveLoop()
 	return m
+}
+
+func (m *Manager) SetHostKeyCallback(cb ssh.HostKeyCallback) {
+	m.hostKeyCallback = cb
 }
 
 func (m *Manager) Connect(accountID string, cfg *AccountConfig) (string, error) {
@@ -62,7 +68,7 @@ func (m *Manager) Connect(accountID string, cfg *AccountConfig) (string, error) 
 	sshConfig := &ssh.ClientConfig{
 		User:            cfg.Username,
 		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: m.hostKeyCallback,
 		Timeout:         15 * time.Second,
 	}
 

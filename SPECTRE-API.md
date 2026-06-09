@@ -88,6 +88,49 @@ All requests require header: `X-SPECTRE-Token: <token>`
 
 ---
 
+### Groups
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/groups` | List connection groups |
+| POST | `/groups` | Create group |
+| PUT | `/groups/:id` | Update group |
+| DELETE | `/groups/:id` | Delete group (connections become ungrouped) |
+
+**Create Group Body:**
+```json
+{
+  "name": "Production",
+  "color": "#7c3aed",
+  "sort_order": 0
+}
+```
+
+---
+
+### Known Hosts
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/known-hosts` | List trusted host keys |
+| POST | `/known-hosts/trust` | Trust a host key (after mismatch prompt) |
+| DELETE | `/known-hosts/:id` | Remove trusted host |
+
+**Trust Host Key Body:**
+```json
+{
+  "host": "10.0.0.1",
+  "port": 22,
+  "key_type": "ssh-ed25519",
+  "fingerprint": "SHA256:…",
+  "key_data": "<base64-marshaled-key>"
+}
+```
+
+Connect errors with code `HOST_KEY_MISMATCH` include `expected_fingerprint`, `received_fingerprint`, and `received_key` in the response body.
+
+---
+
 ### Keys
 
 | Method | Endpoint | Description |

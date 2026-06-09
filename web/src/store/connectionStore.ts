@@ -11,6 +11,7 @@ interface ConnectionStore {
   connect: (id: string) => Promise<string>
   disconnect: (id: string) => Promise<void>
   remove: (id: string) => Promise<void>
+  assignGroup: (id: string, groupId: string | null) => Promise<void>
   clearError: () => void
 }
 
@@ -56,6 +57,13 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   remove: async (id: string) => {
     await connectionsApi.delete(id)
+    await get().fetch()
+  },
+
+  assignGroup: async (id: string, groupId: string | null) => {
+    const conn = get().connections.find((c) => c.id === id)
+    if (!conn) return
+    await connectionsApi.update(id, { ...conn, group_id: groupId })
     await get().fetch()
   },
 

@@ -87,9 +87,9 @@ export function Settings() {
       <section className="bg-surface border border-[var(--border-default)] border-l-[3px] border-l-purple-core rounded-brutal p-5">
         <h3 className="font-display text-purple-bright mb-2">Appearance</h3>
         <p className="font-mono text-xs text-text-muted mb-4">
-          Brutalist dark themes with accent color variants.
+          Brutalist dark themes — default purple, pure neutral, or accent variants.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {THEMES.map((theme) => {
             const active = resolveTheme(settings.theme) === theme.id
             return (

@@ -11,6 +11,14 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+func MarshalPrivateKeyWithPassphrase(signer ssh.Signer, passphrase string) (string, error) {
+	privBytes, err := ssh.MarshalPrivateKey(signer, passphrase)
+	if err != nil {
+		return "", err
+	}
+	return string(pem.EncodeToMemory(privBytes)), nil
+}
+
 func ParsePrivateKey(pemData, passphrase string) (ssh.Signer, error) {
 	block, _ := pem.Decode([]byte(pemData))
 	if block == nil {
@@ -47,6 +55,18 @@ func GenerateRSAKey(bits int) (privatePEM, publicSSH string, fingerprint string,
 	publicSSH = string(ssh.MarshalAuthorizedKey(pub))
 	fingerprint = ssh.FingerprintSHA256(pub)
 	return privatePEM, publicSSH, fingerprint, nil
+}
+
+func InspectPrivateKey(pemData, passphrase string) (publicSSH, fingerprint, keyType string, err error) {
+	signer, err := ParsePrivateKey(pemData, passphrase)
+	if err != nil {
+		return "", "", "", err
+	}
+	pub := signer.PublicKey()
+	publicSSH = string(ssh.MarshalAuthorizedKey(pub))
+	fingerprint = ssh.FingerprintSHA256(pub)
+	keyType = pub.Type()
+	return publicSSH, fingerprint, keyType, nil
 }
 
 func GenerateEd25519Key() (privatePEM, publicSSH string, fingerprint string, err error) {

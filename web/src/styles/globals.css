@@ -22,6 +22,27 @@
   --text-accent: var(--purple-bright);
 }
 
+[data-theme="pure-dark"] {
+  --bg-void: #000000;
+  --bg-deep: #0a0a0a;
+  --bg-surface: #111111;
+  --bg-elevated: #171717;
+  --bg-hover: #1f1f1f;
+  --bg-active: #262626;
+  --purple-dim: #2a2a2a;
+  --purple-mid: #404040;
+  --purple-core: #a3a3a3;
+  --purple-bright: #e5e5e5;
+  --purple-glow: #f5f5f5;
+  --accent-rgb: 163, 163, 163;
+  --accent-bright-rgb: 229, 229, 229;
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
+  --border-active: rgba(255, 255, 255, 0.25);
+  --selection-bg: rgba(255, 255, 255, 0.15);
+  --text-accent: var(--purple-bright);
+}
+
 [data-theme="pink"] {
   --bg-void: #050305;
   --bg-deep: #0a070c;
@@ -73,6 +94,13 @@
   --text-primary: #e2e8f0;
   --text-secondary: #94a3b8;
   --text-muted: #4a5568;
+  /* Cyberpunk glitch accents — theme-agnostic neon layer */
+  --glitch-pink: #ff2a6d;
+  --glitch-cyan: #05d9e8;
+  --glitch-yellow: #fcee09;
+  --glitch-pink-rgb: 255, 42, 109;
+  --glitch-cyan-rgb: 5, 217, 232;
+  --glitch-yellow-rgb: 252, 238, 9;
 }
 
 @theme {

@@ -1,25 +1,58 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { useConnectionStore } from '@/store/connectionStore'
+import { useGroupStore } from '@/store/groupStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { useTerminalStore } from '@/store/terminalStore'
 import { ConnectionList } from '@/components/connections/ConnectionList'
+import { GroupSidebar } from '@/components/connections/GroupSidebar'
 import { AddConnectionModal } from '@/components/connections/AddConnectionModal'
+import { HostKeyTrustModal, parseHostKeyMismatch } from '@/components/connections/HostKeyTrustModal'
+import { HostKeyMismatchDetails } from '@/api/knownHosts'
 import { Button } from '@/components/shared/Button'
 
 export function Connections() {
   const navigate = useNavigate()
   const [modalOpen, setModalOpen] = useState(false)
-  const { connections, activeConnIds, error, fetch, connect, disconnect, remove, clearError } =
-    useConnectionStore()
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [hostKeyPrompt, setHostKeyPrompt] = useState<{
+    connectionId: string
+    details: HostKeyMismatchDetails
+  } | null>(null)
+  const {
+    connections,
+    activeConnIds,
+    error,
+    fetch,
+    connect,
+    disconnect,
+    remove,
+    assignGroup,
+    clearError,
+  } = useConnectionStore()
+  const { groups, fetch: fetchGroups } = useGroupStore()
   const { vaultLocked, vaultConfigured, fetch: fetchSettings, openVaultModal } = useSettingsStore()
   const addTab = useTerminalStore((s) => s.addTab)
 
   useEffect(() => {
     fetch()
+    fetchGroups()
     fetchSettings()
-  }, [fetch, fetchSettings])
+  }, [fetch, fetchGroups, fetchSettings])
+
+  const { counts, ungroupedCount } = useMemo(() => {
+    const counts: Record<string, number> = {}
+    let ungroupedCount = 0
+    for (const c of connections) {
+      if (c.group_id) {
+        counts[c.group_id] = (counts[c.group_id] ?? 0) + 1
+      } else {
+        ungroupedCount++
+      }
+    }
+    return { counts, ungroupedCount }
+  }, [connections])
 
   const handleConnect = async (id: string) => {
     if (vaultLocked || !vaultConfigured) {
@@ -29,6 +62,21 @@ export function Connections() {
     clearError()
     try {
       await connect(id)
+    } catch (e) {
+      const mismatch = parseHostKeyMismatch(e)
+      if (mismatch) {
+        setHostKeyPrompt({ connectionId: id, details: mismatch })
+      }
+    }
+  }
+
+  const handleHostKeyTrusted = async () => {
+    if (!hostKeyPrompt) return
+    const { connectionId } = hostKeyPrompt
+    setHostKeyPrompt(null)
+    clearError()
+    try {
+      await connect(connectionId)
     } catch {
       // error stored in connectionStore
     }
@@ -65,19 +113,39 @@ export function Connections() {
           {error}
         </div>
       )}
-      <ConnectionList
-        connections={connections}
-        activeConnIds={activeConnIds}
-        vaultLocked={vaultLocked}
-        onConnect={handleConnect}
-        onDisconnect={disconnect}
-        onDelete={remove}
-        onTerminal={handleTerminal}
-      />
+      <div className="flex gap-6">
+        <GroupSidebar
+          selectedGroupId={selectedGroupId}
+          onSelect={setSelectedGroupId}
+          counts={counts}
+          totalCount={connections.length}
+          ungroupedCount={ungroupedCount}
+        />
+        <div className="flex-1 min-w-0">
+          <ConnectionList
+            connections={connections}
+            groups={groups}
+            activeConnIds={activeConnIds}
+            selectedGroupId={selectedGroupId}
+            vaultLocked={vaultLocked}
+            onConnect={handleConnect}
+            onDisconnect={disconnect}
+            onDelete={remove}
+            onTerminal={handleTerminal}
+            onAssignGroup={assignGroup}
+          />
+        </div>
+      </div>
       <AddConnectionModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onCreated={fetch}
+      />
+      <HostKeyTrustModal
+        open={!!hostKeyPrompt}
+        details={hostKeyPrompt?.details ?? null}
+        onClose={() => setHostKeyPrompt(null)}
+        onTrusted={handleHostKeyTrusted}
       />
     </div>
   )
