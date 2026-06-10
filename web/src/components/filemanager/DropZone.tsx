@@ -1,6 +1,7 @@
 import { useState, useCallback, DragEvent, ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUploadQueue } from '@/hooks/useUploadQueue'
+import { collectFromDataTransfer } from '@/lib/localFiles'
 
 interface DropZoneProps {
   connectionId: string
@@ -11,7 +12,7 @@ interface DropZoneProps {
 export function DropZone({ connectionId, remotePath, children }: DropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [, setDragDepth] = useState(0)
-  const { enqueue } = useUploadQueue()
+  const { enqueueTree } = useUploadQueue()
 
   const handleDragEnter = useCallback((e: DragEvent) => {
     e.preventDefault()
@@ -29,17 +30,15 @@ export function DropZone({ connectionId, remotePath, children }: DropZoneProps) 
   }, [])
 
   const handleDrop = useCallback(
-    (e: DragEvent) => {
+    async (e: DragEvent) => {
       e.preventDefault()
       setIsDragOver(false)
       setDragDepth(0)
-      const files = Array.from(e.dataTransfer.files)
-      files.forEach((file) => {
-        const path = remotePath.endsWith('/') ? remotePath + file.name : remotePath + '/' + file.name
-        enqueue(connectionId, file, path)
-      })
+      const { files, emptyDirs } = await collectFromDataTransfer(e.dataTransfer)
+      if (files.length === 0 && emptyDirs.length === 0) return
+      await enqueueTree(connectionId, remotePath, files, emptyDirs)
     },
-    [connectionId, remotePath, enqueue]
+    [connectionId, remotePath, enqueueTree]
   )
 
   return (
@@ -60,7 +59,7 @@ export function DropZone({ connectionId, remotePath, children }: DropZoneProps) 
             exit={{ opacity: 0 }}
           >
             <p className="font-mono text-purple-bright text-sm uppercase tracking-wider">
-              Drop files to upload
+              Drop files or folders to upload
             </p>
           </motion.div>
         )}

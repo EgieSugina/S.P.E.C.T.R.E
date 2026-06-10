@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FolderPlus, RefreshCw, Trash2, Upload } from 'lucide-react'
+import { FolderPlus, FolderUp, RefreshCw, Trash2, Upload } from 'lucide-react'
 import { useConnectionStore } from '@/store/connectionStore'
 import { useFileStore } from '@/store/fileStore'
 import { FileTree } from '@/components/filemanager/FileTree'
@@ -10,11 +10,12 @@ import { Button } from '@/components/shared/Button'
 import { Modal } from '@/components/shared/Modal'
 import { useUploadQueue } from '@/hooks/useUploadQueue'
 import { useSftpProgress } from '@/hooks/useSftpProgress'
+import { collectFromFileList } from '@/lib/localFiles'
 
 export function FileManagerPage() {
   const { connections, activeConnIds, fetch } = useConnectionStore()
   const { connId, currentPath, entries, setConnId, navigate, refresh } = useFileStore()
-  const { enqueue } = useUploadQueue()
+  const { enqueue, enqueueTree } = useUploadQueue()
   const queue = useUploadQueue((s) => s.queue)
   const clearCompleted = useUploadQueue((s) => s.clearCompleted)
 
@@ -58,16 +59,26 @@ export function FileManagerPage() {
     })
   }
 
-  const handleUpload = () => {
+  const openFilePicker = (directory: boolean) => {
     if (!connId) return
     const input = document.createElement('input')
     input.type = 'file'
     input.multiple = true
-    input.onchange = () => {
-      if (!input.files) return
-      for (const file of Array.from(input.files)) {
-        const path = currentPath.endsWith('/') ? currentPath + file.name : currentPath + '/' + file.name
-        enqueue(connId, file, path)
+    if (directory) {
+      input.webkitdirectory = true
+    }
+    input.onchange = async () => {
+      if (!input.files || input.files.length === 0) return
+      if (directory) {
+        const { files, emptyDirs } = collectFromFileList(input.files)
+        await enqueueTree(connId, currentPath, files, emptyDirs)
+      } else {
+        for (const file of Array.from(input.files)) {
+          const path = currentPath.endsWith('/')
+            ? currentPath + file.name
+            : currentPath + '/' + file.name
+          enqueue(connId, file, path)
+        }
       }
     }
     input.click()
@@ -147,8 +158,11 @@ export function FileManagerPage() {
         >
           <Trash2 size={14} className="inline mr-1" /> Delete Selected
         </Button>
-        <Button variant="primary" onClick={handleUpload} disabled={!connId}>
+        <Button variant="primary" onClick={() => openFilePicker(false)} disabled={!connId}>
           <Upload size={14} className="inline mr-1" /> Upload
+        </Button>
+        <Button variant="ghost" onClick={() => openFilePicker(true)} disabled={!connId}>
+          <FolderUp size={14} className="inline mr-1" /> Upload Folder
         </Button>
       </div>
       <div className="flex-1 overflow-auto">

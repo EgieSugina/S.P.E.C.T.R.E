@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { sftpApi } from '@/api/sftp'
+import { joinRemotePath, type LocalFileEntry } from '@/lib/localFiles'
 
 export interface UploadItem {
   id: string
@@ -18,6 +19,12 @@ interface UploadQueueStore {
   activeCount: number
   setMaxConcurrent: (n: number) => void
   enqueue: (connId: string, file: File, remotePath: string) => void
+  enqueueTree: (
+    connId: string,
+    baseRemotePath: string,
+    files: LocalFileEntry[],
+    emptyDirs?: string[]
+  ) => Promise<void>
   processQueue: (connId: string) => void
   updateFromWS: (data: unknown) => void
   clearCompleted: () => void
@@ -42,6 +49,23 @@ export const useUploadQueue = create<UploadQueueStore>((set, get) => ({
     }
     set((s) => ({ queue: [...s.queue, item] }))
     get().processQueue(connId)
+  },
+
+  enqueueTree: async (connId, baseRemotePath, files, emptyDirs = []) => {
+    const sortedDirs = [...emptyDirs].sort(
+      (a, b) => a.split('/').length - b.split('/').length
+    )
+    for (const rel of sortedDirs) {
+      try {
+        await sftpApi.mkdir(connId, joinRemotePath(baseRemotePath, rel))
+      } catch {
+        // Directory may already exist on the remote host.
+      }
+    }
+    const { enqueue } = get()
+    for (const { file, relativePath } of files) {
+      enqueue(connId, file, joinRemotePath(baseRemotePath, relativePath))
+    }
   },
 
   updateFromWS: (data) => {

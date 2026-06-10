@@ -88,6 +88,41 @@ All requests require header: `X-SPECTRE-Token: <token>`
 
 ---
 
+### Route Trace
+
+Traceroute-style hop chain from SPECTRE (or via an active SSH session). Requires `traceroute` or `tracepath` on the host running the trace; falls back to a single-hop TCP probe if neither is installed.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/trace` | `?host=example.com` — trace from local SPECTRE host |
+| POST | `/connections/:id/trace` | Trace to connection host (or override below) |
+
+**Connection Trace Body (optional):**
+```json
+{ "host": "10.0.0.50" }
+```
+
+**Response:**
+```json
+{
+  "target": "example.com",
+  "resolved_ip": "93.184.216.34",
+  "hops": [
+    { "hop": 0, "host": "localhost", "status": "local" },
+    { "hop": 1, "host": "192.168.1.1", "ip": "192.168.1.1", "rtt_ms": 0.45, "status": "alive" },
+    { "hop": 2, "host": "*", "status": "timeout" }
+  ],
+  "via": "local",
+  "tool": "traceroute",
+  "duration_ms": 1234,
+  "error": "optional warning when using fallback"
+}
+```
+
+Hop `status` values: `local`, `gateway`, `alive`, `timeout`, `target`. When SSH is connected, trace runs on the remote host and prepends a gateway hop for the SSH endpoint.
+
+---
+
 ### Groups
 
 | Method | Endpoint | Description |

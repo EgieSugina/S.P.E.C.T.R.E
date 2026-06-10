@@ -29,9 +29,7 @@ func Run(cfg Config) error {
 }
 
 func onReady(cfg Config) {
-	systray.SetIcon(TrayIcon())
 	systray.SetTitle("SPECTRE")
-	systray.SetTooltip("S.P.E.C.T.R.E — You were never here.")
 
 	mOpen := systray.AddMenuItem("Open SPECTRE", "Open web UI in browser")
 	systray.AddSeparator()
@@ -53,16 +51,24 @@ func onReady(cfg Config) {
 		opts.Bind = daemon.DefaultBind
 	}
 
+	var lastRunning bool
+	var iconSynced bool
+
 	refreshMenu := func() {
 		running := daemon.IsRunning(configDir)
 		if running {
 			mStart.Disable()
 			mStop.Enable()
-			systray.SetTooltip("SPECTRE — running")
+			systray.SetTooltip("SPECTRE — Running")
 		} else {
 			mStart.Enable()
 			mStop.Disable()
-			systray.SetTooltip("SPECTRE — stopped")
+			systray.SetTooltip("SPECTRE — Stopped")
+		}
+		if !iconSynced || running != lastRunning {
+			systray.SetIcon(TrayIcon(running))
+			lastRunning = running
+			iconSynced = true
 		}
 	}
 	refreshMenu()

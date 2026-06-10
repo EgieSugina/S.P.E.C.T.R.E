@@ -9,7 +9,10 @@ import { Modal } from '@/components/shared/Modal'
 import { Socks5Config } from '@/components/proxy/Socks5Config'
 import { PortForwardList } from '@/components/proxy/PortForwardList'
 import { ConnectionGraph } from '@/components/proxy/ConnectionGraph'
+import { RouteTrace } from '@/components/proxy/RouteTrace'
 import { ApiError } from '@/api/client'
+
+type GraphTab = 'topology' | 'trace'
 
 function statusColor(status: string): 'green' | 'red' | 'purple' | 'amber' {
   if (status === 'running') return 'green'
@@ -36,6 +39,7 @@ export function ProxyManager() {
   const [busy, setBusy] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [graphTab, setGraphTab] = useState<GraphTab>('topology')
 
   useEffect(() => {
     fetch()
@@ -62,6 +66,9 @@ export function ProxyManager() {
   const connName = (id: string) => connections.find((c) => c.id === id)?.name ?? id.slice(0, 8)
   const selectedTunnel = socks5Tunnels.find((t) => t.id === selectedId)
   const selectedStats = selectedId ? stats[selectedId] : undefined
+  const selectedConnection = selectedTunnel
+    ? connections.find((c) => c.id === selectedTunnel.connection_id)
+    : undefined
 
   const run = async (tunnelId: string, fn: (id: string) => Promise<void>) => {
     setBusy(tunnelId)
@@ -233,19 +240,40 @@ export function ProxyManager() {
                   {selectedTunnel.name} · {selectedStats?.bind_addr ?? `127.0.0.1:${selectedTunnel.local_port}`}
                 </p>
               </div>
-              {selectedStats && (
-                <p className="font-mono text-[10px] text-term-green">
-                  {selectedStats.active_connections} active / {selectedStats.total_connections} routed
-                </p>
-              )}
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1">
+                  <GraphTabToggle
+                    label="Proxy Topology"
+                    active={graphTab === 'topology'}
+                    onClick={() => setGraphTab('topology')}
+                  />
+                  <GraphTabToggle
+                    label="Route Trace"
+                    active={graphTab === 'trace'}
+                    onClick={() => setGraphTab('trace')}
+                  />
+                </div>
+                {graphTab === 'topology' && selectedStats && (
+                  <p className="font-mono text-[10px] text-term-green">
+                    {selectedStats.active_connections} active / {selectedStats.total_connections} routed
+                  </p>
+                )}
+              </div>
             </div>
             <div className="shrink-0">
-              <ConnectionGraph
-                graph={selectedStats?.graph}
-                bindAddr={selectedStats?.bind_addr ?? `127.0.0.1:${selectedTunnel.local_port}`}
-                connections={selectedStats?.connections}
-                empty={!selectedStats?.graph?.edges?.length}
-              />
+              {graphTab === 'topology' ? (
+                <ConnectionGraph
+                  graph={selectedStats?.graph}
+                  bindAddr={selectedStats?.bind_addr ?? `127.0.0.1:${selectedTunnel.local_port}`}
+                  connections={selectedStats?.connections}
+                  empty={!selectedStats?.graph?.edges?.length}
+                />
+              ) : (
+                <RouteTrace
+                  connection={selectedConnection}
+                  defaultHost={selectedConnection?.host}
+                />
+              )}
             </div>
             {hasActiveConnections && (
               <div className="flex flex-col flex-1 min-h-0 mt-4 overflow-hidden">
@@ -317,6 +345,31 @@ export function ProxyManager() {
         )}
       </Modal>
     </div>
+  )
+}
+
+function GraphTabToggle({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={clsx(
+        'px-1.5 py-0.5 font-mono text-[10px] uppercase rounded-brutal border transition-colors',
+        active
+          ? 'border-purple-core text-purple-bright bg-purple-dim/30'
+          : 'border-transparent text-text-muted hover:text-text-secondary hover:border-[var(--border-hover)]',
+      )}
+    >
+      {label}
+    </button>
   )
 }
 

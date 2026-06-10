@@ -126,6 +126,8 @@ func (s *Server) Start(ctx context.Context) error {
 			r.Post("/connections/{id}/connect", s.handleConnect)
 			r.Post("/connections/{id}/disconnect", s.handleDisconnect)
 			r.Get("/connections/{id}/status", s.handleConnectionStatus)
+			r.Post("/connections/{id}/trace", s.handleConnectionTrace)
+			r.Get("/trace", s.handleTraceHost)
 			r.Post("/connections/import", s.handleImportConnections)
 			r.Get("/connections/export", s.handleExportConnections)
 

@@ -68,7 +68,7 @@ func StatFile(client *pkgsftp.Client, filePath string) (*FileEntry, error) {
 }
 
 func Mkdir(client *pkgsftp.Client, dirPath string) error {
-	return client.Mkdir(dirPath)
+	return client.MkdirAll(dirPath)
 }
 
 func Delete(client *pkgsftp.Client, filePath string) error {

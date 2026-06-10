@@ -21,7 +21,7 @@ SPECTRE is a local-first SSH/SFTP manager that runs as a **single Go binary** wi
 - **Themes** — Default SPECTRE dark purple, plus Pure Dark (neutral grays), pink, and green variants; selectable in Settings
 
 ### Power (Phase 2)
-- **SOCKS5 & Port Forwarding** — Proxy manager with connection graph visualization
+- **SOCKS5 & Port Forwarding** — Proxy manager with connection graph visualization and traceroute-style route trace
 - **SSH Key Manager** — Generate (Ed25519/RSA), import PEM keys, assign to connections
 - **Connection Groups** — Sidebar grouping, create/edit/delete groups, assign connections
 - **Known Host Verification** — Trust-on-first-use with host key store; mismatch prompts before connect
@@ -261,7 +261,7 @@ Full API docs: [SPECTRE-API.md](SPECTRE-API.md)
 | Phase | Status | Features |
 |-------|--------|----------|
 | **1 — MVP** | ✅ Done | Single binary, SPECTRE theme, connection CRUD, multi-tab terminal, SFTP browse/upload/download, encrypted vault, config import/export |
-| **2 — Power** | ✅ Done | SOCKS5 proxy, local port forward, proxy connection graph, parallel uploads + drag-and-drop, live SFTP progress (WebSocket), system log panel, global vault unlock modal, enriched dashboard, SSH key manager, connection groups UI, known-host verification (TOFU + mismatch prompts) |
+| **2 — Power** | ✅ Done | SOCKS5 proxy, local port forward, proxy connection graph + route trace (traceroute), parallel uploads + drag-and-drop, live SFTP progress (WebSocket), system log panel, global vault unlock modal, enriched dashboard, SSH key manager, connection groups UI, known-host verification (TOFU + mismatch prompts) |
 | **3 — Advanced** | Planned | Split terminal panes, broadcast commands, jump host / bastion, snippet manager, theme customizer |
 | **4 — Distribution** | 🚧 In progress | Signed release binaries (GoReleaser scaffolded), auto-update, Linux KDE tray + autostart (**done**), systemd / launchd / Windows Service, Docker image, Homebrew / WinGet / APT |
 
