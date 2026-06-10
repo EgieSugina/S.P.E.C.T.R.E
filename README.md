@@ -8,7 +8,7 @@
 
 > *You were never here.*
 
-SPECTRE is a local-first SSH/SFTP manager that runs as a **single Go binary** with an embedded React web UI. SSH sessions persist in the backend daemon — close your browser tab and the connection stays alive.
+SPECTRE is a local-first SSH, SFTP, and RDP manager that runs as a **single Go binary** with an embedded React web UI. Sessions persist in the backend daemon — close your browser tab and the connection stays alive.
 
 ![SPECTRE Dashboard](Dashboard.png)
 
@@ -17,43 +17,52 @@ SPECTRE is a local-first SSH/SFTP manager that runs as a **single Go binary** wi
 ## Features
 
 ### Core
-- **Connection Manager** — CRUD for SSH accounts, sidebar groups/folders, encrypted credential storage
+- **Connection Manager** — CRUD for SSH and RDP accounts, sidebar groups/folders, encrypted credential storage; per-connection proxy or proxy-chain routing
 - **Terminal** — Multi-tab xterm.js terminals over WebSocket with session persistence
-- **SFTP File Manager** — Browse, upload, download, mkdir, delete, rename; drag-and-drop with parallel upload queue
+- **RDP Desktop** — In-browser Windows remote desktop (`protocol: rdp`) over WebSocket; multi-tab sessions with keyboard/mouse input and resize
+- **SFTP File Manager** — Browse, upload, download, mkdir, delete, rename; drag-and-drop with parallel upload queue; opens at remote home directory; clickable path breadcrumbs and folder navigation loading states
 - **Encrypted Vault** — AES-256-GCM password encryption with PBKDF2 master password
 - **Config Import/Export** — JSON and encrypted `.spectre` format
 - **Themes** — Default SPECTRE dark purple, plus Pure Dark (neutral grays), pink, and green variants; selectable in Settings
 
 ### Power (Phase 2)
 - **SOCKS5 & Port Forwarding** — Proxy manager with connection graph visualization and traceroute-style route trace
+- **Proxy Chains** — Chain multiple SOCKS5 tunnels or external proxies for multi-hop routing; assign chains to connections (`/api/proxy-chains`)
 - **SSH Key Manager** — Generate (Ed25519/RSA), import PEM keys, assign to connections
 - **Connection Groups** — Sidebar grouping, create/edit/delete groups, assign connections
 - **Known Host Verification** — Trust-on-first-use with host key store; mismatch prompts before connect
-- **Live SFTP Progress** — WebSocket upload progress and queue panel
+- **Live SFTP Progress** — WebSocket upload progress and queue panel; upload concurrency (1–10) configurable in Settings and synced live to the queue
+- **Real-Time Events** — `/ws/tunnels` for tunnel snapshots and live stats; `/ws/system` for connection up/down, session lifecycle, RDP session events, and tunnel status
 - **System Log Panel** — Captured API and process logs in the UI
 - **Dashboard** — Active connections, sessions, tunnels at a glance
 - **Global Vault Unlock Modal** — Unlock vault from anywhere in the app
 
+### UI
+- **Dotted Glow Background** — Ambient purple dot-field backdrop (replaces CRT scanlines)
+- **Live Connection Cards** — Animated moving border on active connections; connecting overlay and connection-lost alert with dismiss
+- **Empty Session Panes** — Guided empty states on Terminal, Desktop, and Files when no session or connection is selected
+- **Navbar** — Dashboard · Connections · Terminal · Desktop · Files · Proxy · Keys · Settings; live connection count and vault status
+
 ### Platform
-- **Background Daemon** — SSH sessions survive browser tab close (`spectre start --daemon`)
+- **Background Daemon** — SSH and RDP sessions survive browser tab close (`spectre start --daemon`)
 - **Linux System Tray** — KDE status-area ghost icon to start/stop daemon, open UI, desktop notifications
 - **Tray Autostart** — `spectre tray --install-autostart` for login startup
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    SPECTRE BINARY                           │
-│  ┌─────────────────┐    ┌──────────────────────────────┐   │
-│  │  Embedded React │    │        Go Backend            │   │
-│  │  (dist/*)       │    │  SSH/SFTP · WebSocket · SQLite│   │
-│  └────────┬────────┘    └──────────────────────────────┘   │
-│           │                                                  │
-│  Browser ─┴─ localhost:57321                                │
-└─────────────────────────────────────────────────────────────┘
-         │ SSH/SFTP
-         ▼
-  [ Remote Servers ]
+```mermaid
+flowchart TB
+    subgraph BINARY["SPECTRE BINARY"]
+        direction LR
+        REACT["Embedded React<br/>(dist/*)"]
+        GO["Go Backend<br/>SSH/SFTP/RDP · WebSocket · SQLite"]
+    end
+
+    BROWSER["Browser — localhost:57321"]
+    REMOTE["Remote Servers"]
+
+    BROWSER --> REACT
+    GO -->|SSH / SFTP / RDP| REMOTE
 ```
 
 See [spectre_architecture_diagram.html](spectre_architecture_diagram.html) for the interactive blueprint.
@@ -156,7 +165,7 @@ spectre version                  # Print version, commit, build date
 
 ### Daemon mode
 
-Background daemon keeps SSH sessions alive after the browser closes. State is stored under the config directory (`~/.spectre` by default):
+Background daemon keeps SSH and RDP sessions alive after the browser closes. State is stored under the config directory (`~/.spectre` by default):
 
 - `spectre.pid` — running process ID
 - `runtime.json` — bind address, port, and PID
@@ -273,8 +282,8 @@ Archive names match `spectre update` expectations: `spectre_linux_x86_64.tar.gz`
 
 1. Start SPECTRE
 2. Go to **Settings** → set up the master vault password
-3. Add connections in **Connections**
-4. Connect and open terminal or file manager
+3. Add SSH or RDP connections in **Connections**
+4. Connect and open **Terminal**, **Desktop** (RDP), or **Files**
 
 ## Project Structure
 
@@ -286,7 +295,9 @@ spectre/
 │   ├── daemon/                  # Background daemon (PID, runtime state)
 │   ├── tray/                    # Linux system tray icon and autostart
 │   ├── ssh/                     # Connection pool, PTY, WebSocket bridge
+│   ├── rdp/                     # RDP client, sessions, bitmap streaming
 │   ├── sftp/                    # File operations, upload queue
+│   ├── proxy/                   # SOCKS5 dial, multi-hop proxy chains
 │   ├── store/                   # SQLite models and CRUD
 │   ├── crypto/                  # Vault and key utilities
 │   └── config/                  # Import/export
@@ -312,20 +323,26 @@ Base URL: `http://localhost:57321/api`
 All requests require header: `X-SPECTRE-Token: <token>`
 
 Key endpoints:
-- `GET /connections` — List SSH accounts
-- `POST /connections/:id/connect` — Open SSH connection
+- `GET /connections` — List SSH/RDP accounts
+- `POST /connections/:id/connect` — Open connection (`ssh` or `rdp` per `protocol`)
 - `GET /groups` — List connection groups
 - `POST /groups` — Create group
 - `GET /keys` — List SSH keypairs
 - `POST /keys/generate` — Generate new keypair
 - `GET /known-hosts` — List trusted host keys
 - `POST /known-hosts/trust` — Accept a new/changed host key
+- `GET /proxy-chains` — List proxy chains
+- `POST /proxy-chains` — Create multi-hop proxy chain
 - `POST /sessions` — Create terminal session
+- `GET /sftp/:conn_id/home` — Resolve remote home directory
 - `GET /sftp/:conn_id/list?path=/` — List remote directory
 - `GET /tunnels` — List proxy/tunnel configs
-- `WS /ws/terminal/:session_id` — Terminal I/O
 - `POST /rdp/sessions` — Create RDP desktop session
+- `WS /ws/terminal/:session_id` — Terminal I/O
 - `WS /ws/rdp/:session_id` — RDP desktop stream (Windows :3389)
+- `WS /ws/sftp/:conn_id` — SFTP upload/download progress
+- `WS /ws/tunnels` — Tunnel snapshots and live stats
+- `WS /ws/system` — Connection, session, tunnel, and RDP lifecycle events
 
 Full API docs: [SPECTRE-API.md](SPECTRE-API.md) · OpenAPI: [docs/openapi.yaml](docs/openapi.yaml)
 
@@ -334,9 +351,9 @@ Full API docs: [SPECTRE-API.md](SPECTRE-API.md) · OpenAPI: [docs/openapi.yaml](
 | Phase | Status | Features |
 |-------|--------|----------|
 | **1 — MVP** | ✅ Done | Single binary, SPECTRE theme, connection CRUD, multi-tab terminal, SFTP browse/upload/download, encrypted vault, config import/export |
-| **2 — Power** | ✅ Done | SOCKS5 proxy, local port forward, proxy connection graph + route trace (traceroute), parallel uploads + drag-and-drop, live SFTP progress (WebSocket), system log panel, global vault unlock modal, enriched dashboard, SSH key manager, connection groups UI, known-host verification (TOFU + mismatch prompts) |
+| **2 — Power** | ✅ Done | SOCKS5 proxy, local port forward, proxy chains (multi-hop), proxy connection graph + route trace (traceroute), parallel uploads + drag-and-drop, live SFTP progress (WebSocket), upload concurrency settings sync, `/ws/tunnels` live stats, expanded `/ws/system` events, system log panel, global vault unlock modal, enriched dashboard, SSH key manager, connection groups UI, known-host verification (TOFU + mismatch prompts), live connection card UX (moving border, connecting/lost overlays), empty session panes, dotted glow background, file manager home-dir default + breadcrumbs |
 | **3 — Advanced** | Planned | Split terminal panes, broadcast commands, jump host / bastion, snippet manager, theme customizer |
-| **3b — RDP** | ✅ Done | In-browser Windows desktop (`protocol: rdp`), NLA via grdp, `/rdp` page, session persistence |
+| **3b — RDP** | ✅ Done | In-browser Windows desktop (`protocol: rdp`), NLA via grdp, **Desktop** page (`/rdp`), session persistence |
 | **4 — Distribution** | ✅ Done | GoReleaser + checksum signing scaffold, `spectre update`, OS services (`spectre service`), Docker image, install scripts, Homebrew / WinGet templates, KDE tray + autostart |
 
 ## License
@@ -346,13 +363,3 @@ Full API docs: [SPECTRE-API.md](SPECTRE-API.md) · OpenAPI: [docs/openapi.yaml](
 ---
 
 *The best tool is the one you trust with your secrets.*
-
-
-# 1. Commit & push fix workflow
-git add .github/workflows/release.yml
-git commit -m "Fix release CI: install Zig outside repo for clean git state"
-git push origin main
-
-# 2. Pindahkan tag ke commit terbaru & trigger ulang release
-git tag -f v0.0.1-beta.1
-git push -f origin v0.0.1-beta.1
