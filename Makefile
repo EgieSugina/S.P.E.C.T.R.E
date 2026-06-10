@@ -36,3 +36,6 @@ dev-frontend:
 
 run: build
 	./$(BINARY) start
+
+release:
+	./scripts/build-release.sh

@@ -99,7 +99,7 @@ export function ProxyManager() {
     (selectedStats?.connections?.length ?? 0) > 0
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col min-h-full">
       <div className="shrink-0 p-6 pb-4">
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -226,12 +226,15 @@ export function ProxyManager() {
       </section>
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden px-6">
+      <div className="flex flex-col flex-1 min-h-0 px-6">
         {selectedTunnel?.status === 'running' && (
           <section
-            className={`flex flex-col min-h-0 overflow-hidden border-t border-[var(--border-default)] pt-4 ${
-              hasActiveConnections ? 'flex-1' : 'shrink-0'
-            }`}
+            className={clsx(
+              'flex flex-col border-t border-[var(--border-default)] pt-4',
+              hasActiveConnections
+                ? 'flex-1 min-h-[min(520px,58vh)]'
+                : 'shrink-0 min-h-[min(480px,52vh)]',
+            )}
           >
             <div className="shrink-0 flex items-center justify-between mb-4">
               <div>
@@ -260,7 +263,16 @@ export function ProxyManager() {
                 )}
               </div>
             </div>
-            <div className="shrink-0">
+            <div
+              className={clsx(
+                'flex flex-col min-h-0',
+                graphTab === 'topology' && hasActiveConnections
+                  ? 'flex-[3] min-h-[min(400px,45vh)]'
+                  : graphTab === 'topology'
+                    ? 'flex-1 min-h-[min(400px,45vh)]'
+                    : 'shrink-0',
+              )}
+            >
               {graphTab === 'topology' ? (
                 <ConnectionGraph
                   graph={selectedStats?.graph}
@@ -276,7 +288,7 @@ export function ProxyManager() {
               )}
             </div>
             {hasActiveConnections && (
-              <div className="flex flex-col flex-1 min-h-0 mt-4 overflow-hidden">
+              <div className="flex flex-col flex-[2] min-h-[200px] max-h-[min(320px,40vh)] lg:max-h-none mt-4 overflow-hidden">
                 <p className="shrink-0 font-mono text-[10px] text-text-muted mb-2 uppercase tracking-wider">
                   Active connections ({selectedStats!.connections!.length})
                 </p>
@@ -313,9 +325,10 @@ export function ProxyManager() {
         )}
 
         <section
-          className={`shrink-0 border-t border-[var(--border-default)] pt-4 pb-6 ${
-            selectedTunnel?.status === 'running' ? 'max-h-[35%] overflow-y-auto' : ''
-          }`}
+          className={clsx(
+            'shrink-0 border-t border-[var(--border-default)] pt-4 pb-6',
+            selectedTunnel?.status === 'running' && 'lg:max-h-[35%] lg:overflow-y-auto',
+          )}
         >
           <PortForwardList
             tunnels={tunnels}

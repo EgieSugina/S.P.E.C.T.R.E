@@ -142,6 +142,12 @@ spectre open                     # Open browser to UI
 spectre tray                     # Run system tray icon (Linux/KDE)
 spectre tray --install-autostart # Autostart tray icon at login
 spectre tray --uninstall-autostart  # Remove tray autostart entry
+spectre service install          # systemd (Linux) / launchd (macOS) user service
+spectre service uninstall        # Remove OS service
+spectre service status           # Service unit state
+spectre update --check           # Check GitHub releases for updates
+spectre update                   # Download and replace binary in place
+spectre version                  # Print version, commit, build date
 ```
 
 ### Daemon mode
@@ -181,6 +187,58 @@ spectre tray --install-autostart
 This writes `~/.config/autostart/spectre-tray.desktop` and installs the app icon to `~/.local/share/icons/hicolor/256x256/apps/spectre.png`. A reference desktop entry ships at `packaging/linux/spectre-tray.desktop`. Remove with `spectre tray --uninstall-autostart`.
 
 On non-Linux platforms, `spectre tray` returns an error (stub build).
+
+### OS background service
+
+Install a user-level service so SPECTRE starts at login (foreground server supervised by the OS):
+
+```bash
+spectre service install          # Linux: ~/.config/systemd/user/spectre.service
+spectre service status
+spectre service uninstall
+```
+
+macOS writes `~/Library/LaunchAgents/com.spectre.daemon.plist`. Windows registers service `SPECTRE` (run as administrator, omit `--user`).
+
+### Updates
+
+Release binaries can self-update from [GitHub Releases](https://github.com/EgieSugina/S.P.E.C.T.R.E/releases):
+
+```bash
+spectre update --check
+spectre update
+```
+
+### Distribution install
+
+```bash
+# Linux / macOS — latest release to ~/.local/bin
+curl -fsSL https://raw.githubusercontent.com/EgieSugina/S.P.E.C.T.R.E/main/scripts/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/EgieSugina/S.P.E.C.T.R.E/main/scripts/install.ps1 | iex
+```
+
+Packaging templates: `packaging/homebrew/spectre.rb`, `packaging/winget/EgieSugina.SPECTRE.yaml`.
+
+### Docker
+
+```bash
+docker build -t spectre .
+docker run -d -p 57321:57321 -v spectre-data:/data spectre
+```
+
+Data and config live in the container volume (`/data`). Default bind is `0.0.0.0` inside Docker.
+
+### Release build script
+
+```bash
+./scripts/build-release.sh              # current platform → ./spectre
+VERSION=1.0.0 ./scripts/build-release.sh
+GOOS=linux GOARCH=amd64 ./scripts/build-release.sh
+```
+
+Cross-platform release archives: `goreleaser release` (see `build/goreleaser.yaml`).
 
 ### Environment Variables
 
@@ -263,11 +321,11 @@ Full API docs: [SPECTRE-API.md](SPECTRE-API.md)
 | **1 — MVP** | ✅ Done | Single binary, SPECTRE theme, connection CRUD, multi-tab terminal, SFTP browse/upload/download, encrypted vault, config import/export |
 | **2 — Power** | ✅ Done | SOCKS5 proxy, local port forward, proxy connection graph + route trace (traceroute), parallel uploads + drag-and-drop, live SFTP progress (WebSocket), system log panel, global vault unlock modal, enriched dashboard, SSH key manager, connection groups UI, known-host verification (TOFU + mismatch prompts) |
 | **3 — Advanced** | Planned | Split terminal panes, broadcast commands, jump host / bastion, snippet manager, theme customizer |
-| **4 — Distribution** | 🚧 In progress | Signed release binaries (GoReleaser scaffolded), auto-update, Linux KDE tray + autostart (**done**), systemd / launchd / Windows Service, Docker image, Homebrew / WinGet / APT |
+| **4 — Distribution** | ✅ Done | GoReleaser + checksum signing scaffold, `spectre update`, OS services (`spectre service`), Docker image, install scripts, Homebrew / WinGet templates, KDE tray + autostart |
 
 ## License
 
-MIT License (placeholder — see LICENSE file)
+-
 
 ---
 

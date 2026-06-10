@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Reference LaunchAgent — installed by `spectre service install` -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.spectre.daemon</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/spectre</string>
+		<string>start</string>
+		<string>--no-browser</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+</dict>
+</plist>

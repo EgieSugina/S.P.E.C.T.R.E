@@ -1,0 +1,15 @@
+# Reference systemd user unit — installed by `spectre service install`
+# Target path: ~/.config/systemd/user/spectre.service
+[Unit]
+Description=SPECTRE — Secure SSH Manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/spectre start --no-browser
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

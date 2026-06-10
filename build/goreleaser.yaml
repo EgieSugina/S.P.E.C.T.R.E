@@ -25,9 +25,9 @@ builds:
         goarch: arm64
     ldflags:
       - -s -w
-      - -X main.Version={{.Version}}
-      - -X main.BuildDate={{.Date}}
-      - -X main.Commit={{.ShortCommit}}
+      - -X spectre/internal/version.Version={{.Version}}
+      - -X spectre/internal/version.BuildDate={{.Date}}
+      - -X spectre/internal/version.Commit={{.ShortCommit}}
 
 archives:
   - id: default
@@ -43,7 +43,9 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
     files:
       - README.md
-      - docs/SPECTRE-PLAN.md
+      - SPECTRE-PLAN.md
+      - packaging/linux/spectre.service
+      - packaging/macos/com.spectre.daemon.plist
 
 checksum:
   name_template: 'checksums.txt'
@@ -56,7 +58,11 @@ changelog:
       - '^test:'
       - '^chore:'
 
+signs:
+  - artifacts: checksum
+    args: ["--detach-sign", "--armor", "${artifact}"]
+
 release:
   github:
-    owner: yourname
-    name: spectre
+    owner: EgieSugina
+    name: S.P.E.C.T.R.E

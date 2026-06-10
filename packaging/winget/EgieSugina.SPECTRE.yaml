@@ -1,0 +1,24 @@
+# WinGet manifest template — update version, InstallerSha256, and ReleaseDate per release.
+PackageIdentifier: EgieSugina.SPECTRE
+PackageVersion: REPLACE_VERSION
+PackageLocale: en-US
+Publisher: EgieSugina
+PackageName: SPECTRE
+License: MIT
+ShortDescription: Local-first SSH/SFTP manager with embedded web UI
+Moniker: spectre
+Tags:
+  - ssh
+  - sftp
+  - terminal
+Installers:
+  - Architecture: x64
+    InstallerType: zip
+    InstallerUrl: https://github.com/EgieSugina/S.P.E.C.T.R.E/releases/download/vREPLACE_VERSION/spectre_windows_x86_64.zip
+    InstallerSha256: REPLACE_SHA256
+    NestedInstallerType: portable
+    NestedInstallerFiles:
+      - RelativeFilePath: spectre.exe
+        PortableCommandAlias: spectre
+ManifestType: singleton
+ManifestVersion: 1.6.0

@@ -27,9 +27,8 @@ import (
 	"spectre/internal/ssh"
 	"spectre/internal/store"
 	"spectre/internal/tunnel"
+	"spectre/internal/version"
 )
-
-const Version = "0.1.0-mvp"
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
@@ -920,7 +919,7 @@ func (s *Server) handleVaultSetup(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"version":     Version,
+		"version":     version.Version,
 		"connections": len(s.sshMgr.ListConnections()),
 		"sessions":    len(s.sshMgr.ListSessions()),
 		"uptime":      time.Now().Format(time.RFC3339),
@@ -928,7 +927,7 @@ func (s *Server) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSystemVersion(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"version": Version})
+	writeJSON(w, http.StatusOK, map[string]string{"version": version.Version})
 }
 
 func (s *Server) runUploadProgressBroadcast() {

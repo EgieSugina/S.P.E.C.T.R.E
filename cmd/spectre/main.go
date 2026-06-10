@@ -15,7 +15,10 @@ import (
 
 	"spectre/internal/daemon"
 	"spectre/internal/server"
+	"spectre/internal/service"
 	"spectre/internal/tray"
+	"spectre/internal/update"
+	"spectre/internal/version"
 )
 
 var (
@@ -24,8 +27,11 @@ var (
 	daemonFlag bool
 	noBrowser bool
 	configDir string
-	installTrayAutostart bool
-	uninstallTrayAutostart bool
+	installTrayAutostart     bool
+	uninstallTrayAutostart   bool
+	serviceUser              bool
+	updateCheckOnly          bool
+	updateRepo               string
 )
 
 func main() {
@@ -37,8 +43,20 @@ func main() {
 var rootCmd = &cobra.Command{
 	Use:   "spectre",
 	Short: "S.P.E.C.T.R.E — Secure Proxy & Encrypted Connection Tunneling Remote Environment",
-	Long:  "You were never here.\n\nSSH/SFTP manager with embedded web UI.",
-	RunE:  runStart,
+	Long: `You were never here.
+
+SSH/SFTP manager with embedded web UI. Default command starts the server.
+
+Commands:
+  start    Start the HTTP server (foreground or --daemon)
+  stop     Stop a background daemon
+  status   Show daemon PID and URL
+  open     Open the UI in your browser
+  tray     Linux KDE system tray icon and autostart
+  service  Install OS background service (systemd / launchd / Windows Service)
+  update   Check for or apply updates from GitHub releases
+  version  Print build version information`,
+	RunE: runStart,
 }
 
 var startCmd = &cobra.Command{
@@ -60,6 +78,9 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(openCmd)
 	rootCmd.AddCommand(trayCmd)
+	rootCmd.AddCommand(serviceCmd)
+	rootCmd.AddCommand(updateCmd)
+	rootCmd.AddCommand(versionCmd)
 
 	flags := startCmd.Flags()
 	flags.IntVarP(&port, "port", "p", envInt("SPECTRE_PORT", daemon.DefaultPort), "HTTP port")
@@ -81,6 +102,22 @@ func init() {
 	trayFlags.BoolVar(&noBrowser, "no-browser", true, "Don't open browser when starting from tray")
 	trayFlags.BoolVar(&installTrayAutostart, "install-autostart", false, "Install KDE autostart entry")
 	trayFlags.BoolVar(&uninstallTrayAutostart, "uninstall-autostart", false, "Remove KDE autostart entry")
+
+	serviceCmd.PersistentFlags().BoolVar(&serviceUser, "user", true, "User-level service (systemd --user / LaunchAgent)")
+	serviceCmd.PersistentFlags().IntVarP(&port, "port", "p", envInt("SPECTRE_PORT", daemon.DefaultPort), "HTTP port")
+	serviceCmd.PersistentFlags().StringVar(&bind, "bind", envStr("SPECTRE_BIND", daemon.DefaultBind), "Bind address")
+	serviceCmd.PersistentFlags().StringVar(&configDir, "config", envStr("SPECTRE_CONFIG", ""), "Config directory")
+
+	updateCmd.Flags().BoolVar(&updateCheckOnly, "check", false, "Check for updates without installing")
+	updateCmd.Flags().StringVar(&updateRepo, "repo", "", "GitHub repo owner/name (default EgieSugina/S.P.E.C.T.R.E)")
+
+	serviceCmd.AddCommand(serviceInstallCmd)
+	serviceCmd.AddCommand(serviceUninstallCmd)
+	serviceCmd.AddCommand(serviceStatusCmd)
+
+	for _, cmd := range []*cobra.Command{stopCmd, statusCmd, openCmd} {
+		cmd.Flags().StringVar(&configDir, "config", envStr("SPECTRE_CONFIG", ""), "Config directory")
+	}
 }
 
 func runStart(cmd *cobra.Command, args []string) error {
@@ -155,9 +192,53 @@ func runTray(cmd *cobra.Command, args []string) error {
 	})
 }
 
+var serviceCmd = &cobra.Command{
+	Use:   "service",
+	Short: "Install or manage OS background service",
+	Long: `Register SPECTRE as a platform service so it starts at login.
+
+Linux: writes ~/.config/systemd/user/spectre.service (systemctl --user)
+macOS: writes ~/Library/LaunchAgents/com.spectre.daemon.plist
+Windows: registers Windows Service "SPECTRE" (requires administrator)`,
+}
+
+var serviceInstallCmd = &cobra.Command{
+	Use:   "install",
+	Short: "Install background service",
+	RunE:  runServiceInstall,
+}
+
+var serviceUninstallCmd = &cobra.Command{
+	Use:   "uninstall",
+	Short: "Remove background service",
+	RunE:  runServiceUninstall,
+}
+
+var serviceStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Show service installation state",
+	RunE:  runServiceStatus,
+}
+
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Check for or install updates from GitHub releases",
+	Long:  "Compares the running binary to the latest GitHub release and optionally replaces it in place.",
+	RunE:  runUpdate,
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version, build date, and commit",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("spectre %s (%s, %s)\n", version.Version, version.Commit, version.BuildDate)
+	},
+}
+
 var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the SPECTRE daemon",
+	Long:  "Sends SIGTERM to the PID in the config directory and removes runtime artifacts.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := daemon.Stop(configDir); err != nil {
 			return err
@@ -171,6 +252,7 @@ var stopCmd = &cobra.Command{
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Check daemon status",
+	Long:  "Reports whether the background daemon is running and prints its PID and URL.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		running, pid := daemon.Status(configDir)
 		if !running {
@@ -185,6 +267,7 @@ var statusCmd = &cobra.Command{
 var openCmd = &cobra.Command{
 	Use:   "open",
 	Short: "Open SPECTRE in browser",
+	Long:  "Opens the daemon URL in the default browser. The daemon must already be running.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir := daemon.ResolveConfigDir(configDir)
 		if !daemon.IsRunning(dir) {
@@ -193,6 +276,63 @@ var openCmd = &cobra.Command{
 		openBrowser(daemon.URL(dir))
 		return nil
 	},
+}
+
+func runServiceInstall(cmd *cobra.Command, args []string) error {
+	executable, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	if err := service.Install(service.Options{
+		Executable: executable,
+		Port:       port,
+		Bind:       bind,
+		ConfigDir:  configDir,
+		User:       serviceUser,
+	}); err != nil {
+		return err
+	}
+	fmt.Println("[SPECTRE] Service installed")
+	return nil
+}
+
+func runServiceUninstall(cmd *cobra.Command, args []string) error {
+	if err := service.Uninstall(serviceUser); err != nil {
+		return err
+	}
+	fmt.Println("[SPECTRE] Service removed")
+	return nil
+}
+
+func runServiceStatus(cmd *cobra.Command, args []string) error {
+	state, err := service.Status(serviceUser)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("SPECTRE service: %s\n", state)
+	return nil
+}
+
+func runUpdate(cmd *cobra.Command, args []string) error {
+	if updateCheckOnly {
+		res, err := update.Check(updateRepo)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Current: %s\nLatest:  %s\n", res.Current, res.Latest)
+		if res.UpdateAvail {
+			fmt.Println("Update available — run `spectre update` to install")
+		} else {
+			fmt.Println(res.Message)
+		}
+		return nil
+	}
+	res, err := update.Apply(updateRepo)
+	if err != nil {
+		return err
+	}
+	fmt.Println(res.Message)
+	return nil
 }
 
 func runAsDaemon() error {
