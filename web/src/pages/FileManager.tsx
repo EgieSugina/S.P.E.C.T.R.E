@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FolderPlus, FolderUp, RefreshCw, Trash2, Upload } from 'lucide-react'
+import { CheckSquare, FolderPlus, FolderUp, RefreshCw, Trash2, Upload } from 'lucide-react'
 import { useConnectionStore } from '@/store/connectionStore'
 import { useFileStore } from '@/store/fileStore'
 import { FileTree } from '@/components/filemanager/FileTree'
@@ -59,6 +59,21 @@ export function FileManagerPage() {
     })
   }
 
+  const allSelected = entries.length > 0 && entries.every((e) => selectedPaths.has(e.path))
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      setSelectedPaths(new Set())
+    } else {
+      setSelectedPaths(new Set(entries.map((e) => e.path)))
+    }
+  }
+
+  const pathsToDelete = (paths: Iterable<string>) =>
+    [...paths].filter(
+      (p) => ![...paths].some((other) => other !== p && p.startsWith(other + '/')),
+    )
+
   const openFilePicker = (directory: boolean) => {
     if (!connId) return
     const input = document.createElement('input')
@@ -98,7 +113,7 @@ export function FileManagerPage() {
     setDeleting(true)
     setDeleteError(null)
     const errors: string[] = []
-    for (const path of selectedPaths) {
+    for (const path of pathsToDelete(selectedPaths)) {
       try {
         await sftpApi.delete(connId, path)
       } catch (e) {
@@ -150,6 +165,14 @@ export function FileManagerPage() {
         </Button>
         <Button variant="ghost" onClick={handleMkdir} disabled={!connId}>
           <FolderPlus size={14} />
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={handleSelectAll}
+          disabled={!connId || entries.length === 0}
+        >
+          <CheckSquare size={14} className="inline mr-1" />
+          {allSelected ? 'Deselect All' : 'Select All'}
         </Button>
         <Button
           variant="danger"

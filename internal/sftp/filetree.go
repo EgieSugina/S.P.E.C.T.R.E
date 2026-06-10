@@ -77,9 +77,32 @@ func Delete(client *pkgsftp.Client, filePath string) error {
 		return err
 	}
 	if info.IsDir() {
-		return client.RemoveDirectory(filePath)
+		return deleteDirRecursive(client, filePath)
 	}
 	return client.Remove(filePath)
+}
+
+func deleteDirRecursive(client *pkgsftp.Client, dirPath string) error {
+	entries, err := client.ReadDir(dirPath)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		childPath := path.Join(dirPath, e.Name())
+		if !strings.HasPrefix(childPath, "/") {
+			childPath = "/" + childPath
+		}
+		if e.IsDir() {
+			if err := deleteDirRecursive(client, childPath); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := client.Remove(childPath); err != nil {
+			return err
+		}
+	}
+	return client.RemoveDirectory(dirPath)
 }
 
 func Rename(client *pkgsftp.Client, from, to string) error {
