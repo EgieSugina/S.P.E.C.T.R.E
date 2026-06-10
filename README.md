@@ -230,15 +230,24 @@ docker run -d -p 57321:57321 -v spectre-data:/data spectre
 
 Data and config live in the container volume (`/data`). Default bind is `0.0.0.0` inside Docker.
 
-### Release build script
+### Release builds (GitHub)
+
+Published targets: **linux** (`amd64`, `arm64`) and **windows** (`amd64`). macOS is not built in CI. CGO is required (SQLite); cross-compilation uses [Zig](https://ziglang.org/) as `CC`/`CXX`.
 
 ```bash
-./scripts/build-release.sh              # current platform → ./spectre
-VERSION=1.0.0 ./scripts/build-release.sh
-GOOS=linux GOARCH=amd64 ./scripts/build-release.sh
+# Prerequisites: zig on PATH, goreleaser, pnpm
+make release              # snapshot archives in dist/ (no git tag)
+make release-github       # publish tagged release to GitHub (needs GITHUB_TOKEN)
+
+# Single native binary (current GOOS/GOARCH)
+make release-local
+VERSION=1.0.0 make release-local
+
+# Cross-compile one target with Zig
+GOOS=linux GOARCH=arm64 ./scripts/build-release.sh
 ```
 
-Cross-platform release archives: `goreleaser release` (see `build/goreleaser.yaml`).
+Archive names match `spectre update` expectations: `spectre_linux_x86_64.tar.gz`, `spectre_linux_arm64.tar.gz`, `spectre_windows_x86_64.zip`. Config: `build/goreleaser.yaml`.
 
 ### Environment Variables
 
