@@ -9,7 +9,7 @@ interface FileStore {
   entries: FileEntry[]
   loading: boolean
   error: string | null
-  setConnId: (id: string | null) => void
+  setConnId: (id: string | null) => Promise<void>
   navigate: (path: string) => Promise<void>
   refresh: () => Promise<void>
   onConnectionLost: (connId: string) => void
@@ -23,7 +23,21 @@ export const useFileStore = create<FileStore>((set, get) => ({
   loading: false,
   error: null,
 
-  setConnId: (id) => set({ connId: id, currentPath: '/', entries: [], error: null }),
+  setConnId: async (id) => {
+    if (!id) {
+      set({ connId: null, currentPath: '/', entries: [], error: null, loading: false })
+      return
+    }
+    set({ connId: id, entries: [], error: null, loading: true })
+    let path = '/'
+    try {
+      const home = await sftpApi.home(id)
+      if (home.path) path = home.path
+    } catch {
+      // fall back to filesystem root
+    }
+    await get().navigate(path)
+  },
 
   navigate: async (path) => {
     const { connId } = get()

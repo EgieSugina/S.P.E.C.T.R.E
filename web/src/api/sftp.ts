@@ -10,6 +10,7 @@ export interface FileEntry {
 }
 
 export const sftpApi = {
+  home: (connId: string) => api<{ path: string }>(`/sftp/${connId}/home`),
   list: (connId: string, path: string) =>
     api<FileEntry[]>(`/sftp/${connId}/list?path=${encodeURIComponent(path)}`),
   mkdir: (connId: string, path: string) =>

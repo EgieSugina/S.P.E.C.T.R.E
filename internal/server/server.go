@@ -162,6 +162,7 @@ func (s *Server) Start(ctx context.Context) error {
 			r.Delete("/sessions/{id}", s.handleKillSession)
 
 			r.Get("/sftp/{connID}/list", s.handleSFTPList)
+			r.Get("/sftp/{connID}/home", s.handleSFTPHome)
 			r.Get("/sftp/{connID}/stat", s.handleSFTPStat)
 			r.Post("/sftp/{connID}/upload", s.handleSFTPUpload)
 			r.Get("/sftp/{connID}/download", s.handleSFTPDownload)
@@ -687,6 +688,23 @@ func (s *Server) getSFTPClient(w http.ResponseWriter, r *http.Request) (*pkgsftp
 		return nil, "", false
 	}
 	return client, connID, true
+}
+
+func (s *Server) handleSFTPHome(w http.ResponseWriter, r *http.Request) {
+	connID := chi.URLParam(r, "connID")
+	conn, ok := s.sshMgr.GetConnection(connID)
+	if !ok {
+		writeError(w, http.StatusBadGateway, "CONNECTION_LOST", "SSH connection is no longer active")
+		return
+	}
+	client, err := s.sftpMgr.GetOrCreate(connID, conn.Client)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{
+		"path": sftp.ResolveHomeDir(client, conn.Client),
+	})
 }
 
 func (s *Server) handleSFTPList(w http.ResponseWriter, r *http.Request) {

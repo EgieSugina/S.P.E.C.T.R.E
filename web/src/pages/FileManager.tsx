@@ -3,6 +3,7 @@ import { CheckSquare, FolderPlus, FolderUp, RefreshCw, Trash2, Upload } from 'lu
 import { useConnectionStore } from '@/store/connectionStore'
 import { useFileStore } from '@/store/fileStore'
 import { FileTree } from '@/components/filemanager/FileTree'
+import { PathBreadcrumbs } from '@/components/filemanager/PathBreadcrumbs'
 import { DropZone } from '@/components/filemanager/DropZone'
 import { UploadQueuePanel } from '@/components/filemanager/UploadQueue'
 import { sftpApi } from '@/api/sftp'
@@ -31,10 +32,6 @@ export function FileManagerPage() {
   useEffect(() => {
     fetch()
   }, [fetch])
-
-  useEffect(() => {
-    if (connId) navigate(currentPath)
-  }, [connId])
 
   useEffect(() => {
     setSelectedPaths(new Set())
@@ -168,14 +165,14 @@ export function FileManagerPage() {
         <select
           className="bg-elevated border border-[var(--border-default)] rounded-brutal px-3 py-2 font-mono text-xs text-purple-bright"
           value={connId || ''}
-          onChange={(e) => setConnId(e.target.value || null)}
+          onChange={(e) => { void setConnId(e.target.value || null) }}
         >
           <option value="">Select connection...</option>
           {activeConnections.map((c) => (
             <option key={c.id} value={activeConnIds[c.id]}>{c.name}</option>
           ))}
         </select>
-        <span className="font-mono text-xs text-term-cyan flex-1 truncate">{currentPath}</span>
+        <PathBreadcrumbs path={currentPath} onNavigate={navigate} />
         <Button variant="ghost" onClick={() => refresh()} disabled={!connId}>
           <RefreshCw size={14} />
         </Button>
