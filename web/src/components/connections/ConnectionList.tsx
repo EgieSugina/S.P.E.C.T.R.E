@@ -1,11 +1,13 @@
 import { Connection, Group } from '@/api/connections'
 import { Tunnel } from '@/api/tunnels'
+import { ProxyChain } from '@/api/proxyChains'
 import { ConnectionCard } from './ConnectionCard'
 
 interface ConnectionListProps {
   connections: Connection[]
   groups: Group[]
   tunnels?: Tunnel[]
+  chains?: ProxyChain[]
   activeConnIds: Record<string, string>
   selectedGroupId: string | null
   vaultLocked?: boolean
@@ -13,6 +15,7 @@ interface ConnectionListProps {
   onDisconnect: (id: string) => void
   onDelete: (id: string) => void
   onTerminal: (id: string, connId: string, name: string) => void
+  onDesktop: (id: string, connId: string, name: string) => void
   onAssignGroup: (id: string, groupId: string | null) => void
 }
 
@@ -52,12 +55,14 @@ function ConnectionGrid({
   items,
   groups,
   tunnels = [],
+  chains = [],
   activeConnIds,
   vaultLocked,
   onConnect,
   onDisconnect,
   onDelete,
   onTerminal,
+  onDesktop,
   onAssignGroup,
 }: Omit<ConnectionListProps, 'connections' | 'selectedGroupId'> & { items: Connection[] }) {
   return (
@@ -73,12 +78,14 @@ function ConnectionGrid({
             group={group}
             groups={groups}
             tunnels={tunnels}
+            chains={chains}
             isActive={isActive}
             vaultLocked={vaultLocked}
             onConnect={() => onConnect(conn.id)}
             onDisconnect={() => onDisconnect(conn.id)}
             onDelete={() => onDelete(conn.id)}
             onTerminal={() => onTerminal(conn.id, connId, conn.name)}
+            onDesktop={() => onDesktop(conn.id, connId, conn.name)}
             onAssignGroup={(groupId) => onAssignGroup(conn.id, groupId)}
           />
         )
@@ -91,6 +98,7 @@ export function ConnectionList({
   connections,
   groups,
   tunnels = [],
+  chains = [],
   activeConnIds,
   selectedGroupId,
   vaultLocked = false,
@@ -98,6 +106,7 @@ export function ConnectionList({
   onDisconnect,
   onDelete,
   onTerminal,
+  onDesktop,
   onAssignGroup,
 }: ConnectionListProps) {
   const filtered = filterConnections(connections, selectedGroupId)
@@ -126,12 +135,14 @@ export function ConnectionList({
         items={filtered}
         groups={groups}
         tunnels={tunnels}
+        chains={chains}
         activeConnIds={activeConnIds}
         vaultLocked={vaultLocked}
         onConnect={onConnect}
         onDisconnect={onDisconnect}
         onDelete={onDelete}
         onTerminal={onTerminal}
+        onDesktop={onDesktop}
         onAssignGroup={onAssignGroup}
       />
     )
@@ -164,12 +175,14 @@ export function ConnectionList({
             items={section.items}
             groups={groups}
             tunnels={tunnels}
+            chains={chains}
             activeConnIds={activeConnIds}
             vaultLocked={vaultLocked}
             onConnect={onConnect}
             onDisconnect={onDisconnect}
             onDelete={onDelete}
             onTerminal={onTerminal}
+            onDesktop={onDesktop}
             onAssignGroup={onAssignGroup}
           />
         </section>

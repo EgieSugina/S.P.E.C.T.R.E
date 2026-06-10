@@ -10,11 +10,13 @@ import { useTunnelEvents } from '@/hooks/useTunnelEvents'
 import { Dashboard } from '@/pages/Dashboard'
 import { Connections } from '@/pages/Connections'
 import { TerminalPage } from '@/pages/Terminal'
+import { RdpPage } from '@/pages/Rdp'
 import { FileManagerPage } from '@/pages/FileManager'
 import { ProxyPage } from '@/pages/Proxy'
 import { KeysPage } from '@/pages/Keys'
 import { Settings } from '@/pages/Settings'
 import { VaultUnlockModal } from '@/components/layout/VaultUnlockModal'
+import { DottedGlowBackground } from '@/components/layout/DottedGlowBackground'
 import { ensureToken } from '@/api/client'
 import { useSettingsStore } from '@/store/settingsStore'
 
@@ -41,6 +43,7 @@ function AnimatedRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/connections" element={<Connections />} />
           <Route path="/terminal" element={<TerminalPage />} />
+          <Route path="/rdp" element={<RdpPage />} />
           <Route path="/files" element={<FileManagerPage />} />
           <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/keys" element={<KeysPage />} />
@@ -64,14 +67,26 @@ function AppShell() {
   }, [fetchSettings])
 
   return (
-    <div className="flex flex-col h-full bg-deep scanlines relative">
-      <Navbar />
-      <div className="flex flex-col flex-1 min-w-0 min-h-0">
-        <AnimatedRoutes />
-        <LogPanel />
-        <StatusBar />
+    <div className="relative flex h-full flex-col bg-deep">
+      <DottedGlowBackground
+        className="pointer-events-none z-0"
+        gap={18}
+        radius={1.5}
+        colorDarkVar="--purple-core"
+        glowColorDarkVar="--purple-glow"
+        opacity={0.45}
+        speedMin={0.3}
+        speedMax={1.0}
+      />
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+        <Navbar />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <AnimatedRoutes />
+          <LogPanel />
+          <StatusBar />
+        </div>
+        <VaultUnlockModal />
       </div>
-      <VaultUnlockModal />
     </div>
   )
 }

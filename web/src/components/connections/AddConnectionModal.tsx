@@ -3,8 +3,8 @@ import { Modal } from '@/components/shared/Modal'
 import { Input } from '@/components/shared/Input'
 import { Button } from '@/components/shared/Button'
 import { connectionsApi } from '@/api/connections'
-import { tunnelsApi } from '@/api/tunnels'
-import { Tunnel } from '@/api/tunnels'
+import { tunnelsApi, Tunnel } from '@/api/tunnels'
+import { proxyChainsApi, ProxyChain } from '@/api/proxyChains'
 import {
   ProxyFormValue,
   ProxySelector,
@@ -27,22 +27,28 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
   const { groups, fetch: fetchGroups } = useGroupStore()
   const [form, setForm] = useState({
     name: '',
+    protocol: 'ssh' as 'ssh' | 'rdp',
     host: '',
     port: 22,
     username: '',
+    domain: '',
     password: '',
     auth_type: 'password',
     private_key_id: '',
     group_id: '',
     notes: '',
+    rdp_width: 1280,
+    rdp_height: 720,
   })
   const [proxy, setProxy] = useState<ProxyFormValue>({
     mode: 'none',
     proxy_tunnel_id: '',
+    proxy_chain_id: '',
     proxy_host: '',
     proxy_port: 1080,
   })
   const [tunnels, setTunnels] = useState<Tunnel[]>([])
+  const [chains, setChains] = useState<ProxyChain[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -52,11 +58,22 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
       fetchKeys()
       fetchGroups()
       tunnelsApi.list().then(setTunnels).catch(() => setTunnels([]))
+      proxyChainsApi.list().then(setChains).catch(() => setChains([]))
     }
   }, [open, fetchSettings, fetchKeys, fetchGroups])
 
   const vaultBlocked = vaultLocked || !vaultConfigured
-  const usesKey = form.auth_type === 'key'
+  const isRdp = form.protocol === 'rdp'
+  const usesKey = !isRdp && form.auth_type === 'key'
+
+  const setProtocol = (protocol: 'ssh' | 'rdp') => {
+    setForm((f) => ({
+      ...f,
+      protocol,
+      port: protocol === 'rdp' ? 3389 : 22,
+      auth_type: 'password',
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,8 +89,16 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
       setError('Password is required')
       return
     }
+    if (isRdp && proxy.mode !== 'none') {
+      setError('RDP connections do not support SSH proxy in MVP')
+      return
+    }
     if (proxy.mode === 'tunnel' && !proxy.proxy_tunnel_id) {
       setError('Select a proxy tunnel')
+      return
+    }
+    if (proxy.mode === 'chain' && !proxy.proxy_chain_id) {
+      setError('Select a proxy chain')
       return
     }
     if (proxy.mode === 'manual' && (!proxy.proxy_host || proxy.proxy_port <= 0)) {
@@ -85,25 +110,32 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
     try {
       await connectionsApi.create({
         ...form,
-        ...proxyPayloadFromForm(proxy),
+        ...(isRdp ? {} : proxyPayloadFromForm(proxy)),
         private_key_id: usesKey ? form.private_key_id : undefined,
         password: usesKey ? undefined : form.password,
         group_id: form.group_id || undefined,
+        domain: isRdp ? form.domain || undefined : undefined,
+        rdp_width: isRdp ? form.rdp_width : undefined,
+        rdp_height: isRdp ? form.rdp_height : undefined,
       })
       onCreated()
       onClose()
       setForm({
         name: '',
+        protocol: 'ssh',
         host: '',
         port: 22,
         username: '',
+        domain: '',
         password: '',
         auth_type: 'password',
         private_key_id: '',
         group_id: '',
         notes: '',
+        rdp_width: 1280,
+        rdp_height: 720,
       })
-      setProxy({ mode: 'none', proxy_tunnel_id: '', proxy_host: '', proxy_port: 1080 })
+      setProxy({ mode: 'none', proxy_tunnel_id: '', proxy_chain_id: '', proxy_host: '', proxy_port: 1080 })
     } catch (err) {
       if (err instanceof ApiError) {
         setError(`[${err.code}] ${err.message}`)
@@ -129,6 +161,25 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
           <label className="font-mono text-[10px] text-text-muted uppercase">Name</label>
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         </div>
+        <div>
+          <label className="font-mono text-[10px] text-text-muted uppercase">Protocol</label>
+          <div className="flex gap-2 mt-1">
+            <Button
+              type="button"
+              variant={form.protocol === 'ssh' ? 'primary' : 'ghost'}
+              onClick={() => setProtocol('ssh')}
+            >
+              SSH
+            </Button>
+            <Button
+              type="button"
+              variant={form.protocol === 'rdp' ? 'primary' : 'ghost'}
+              onClick={() => setProtocol('rdp')}
+            >
+              RDP
+            </Button>
+          </div>
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <label className="font-mono text-[10px] text-text-muted uppercase">Host</label>
@@ -143,17 +194,25 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
           <label className="font-mono text-[10px] text-text-muted uppercase">Username</label>
           <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
         </div>
-        <div>
-          <label className="font-mono text-[10px] text-text-muted uppercase">Authentication</label>
-          <select
-            value={form.auth_type}
-            onChange={(e) => setForm({ ...form, auth_type: e.target.value })}
-            className="w-full mt-1 bg-deep border border-[var(--border-default)] rounded-brutal px-3 py-2 font-mono text-xs text-[var(--text-primary)] focus:border-purple-core/60 focus:outline-none"
-          >
-            <option value="password">Password</option>
-            <option value="key">SSH Key</option>
-          </select>
-        </div>
+        {isRdp && (
+          <div>
+            <label className="font-mono text-[10px] text-text-muted uppercase">Domain (optional)</label>
+            <Input value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} />
+          </div>
+        )}
+        {!isRdp && (
+          <div>
+            <label className="font-mono text-[10px] text-text-muted uppercase">Authentication</label>
+            <select
+              value={form.auth_type}
+              onChange={(e) => setForm({ ...form, auth_type: e.target.value })}
+              className="w-full mt-1 bg-deep border border-[var(--border-default)] rounded-brutal px-3 py-2 font-mono text-xs text-[var(--text-primary)] focus:border-purple-core/60 focus:outline-none"
+            >
+              <option value="password">Password</option>
+              <option value="key">SSH Key</option>
+            </select>
+          </div>
+        )}
         {usesKey ? (
           <div>
             <label className="font-mono text-[10px] text-text-muted uppercase">SSH Key</label>
@@ -188,7 +247,29 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
             />
           </div>
         )}
-        <ProxySelector value={proxy} onChange={setProxy} tunnels={tunnels} />
+        {isRdp && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-mono text-[10px] text-text-muted uppercase">Width</label>
+              <Input
+                type="number"
+                value={form.rdp_width}
+                onChange={(e) => setForm({ ...form, rdp_width: +e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="font-mono text-[10px] text-text-muted uppercase">Height</label>
+              <Input
+                type="number"
+                value={form.rdp_height}
+                onChange={(e) => setForm({ ...form, rdp_height: +e.target.value })}
+              />
+            </div>
+          </div>
+        )}
+        {!isRdp && (
+          <ProxySelector value={proxy} onChange={setProxy} tunnels={tunnels} chains={chains} />
+        )}
         <div>
           <label className="font-mono text-[10px] text-text-muted uppercase">Group</label>
           <select

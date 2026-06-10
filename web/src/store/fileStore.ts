@@ -3,6 +3,12 @@ import { ApiError } from '@/api/client'
 import { FileEntry, sftpApi } from '@/api/sftp'
 import { formatConnectionError } from '@/lib/connectionErrors'
 
+function normalizeRemotePath(path: string): string {
+  const trimmed = path.trim()
+  if (!trimmed || trimmed === '/') return '/'
+  return '/' + trimmed.replace(/^\/+/, '').split('/').filter(Boolean).join('/')
+}
+
 interface FileStore {
   connId: string | null
   currentPath: string
@@ -32,7 +38,7 @@ export const useFileStore = create<FileStore>((set, get) => ({
     let path = '/'
     try {
       const home = await sftpApi.home(id)
-      if (home.path) path = home.path
+      if (home.path) path = normalizeRemotePath(home.path)
     } catch {
       // fall back to filesystem root
     }
@@ -42,9 +48,10 @@ export const useFileStore = create<FileStore>((set, get) => ({
   navigate: async (path) => {
     const { connId } = get()
     if (!connId) return
-    set({ loading: true, currentPath: path, error: null })
+    const normalized = normalizeRemotePath(path)
+    set({ loading: true, currentPath: normalized, entries: [], error: null })
     try {
-      const entries = await sftpApi.list(connId, path)
+      const entries = await sftpApi.list(connId, normalized)
       set({ entries, loading: false })
     } catch (e) {
       const msg = formatConnectionError(e)

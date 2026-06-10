@@ -4,13 +4,13 @@ interface Crumb {
 }
 
 export function pathToBreadcrumbs(path: string): Crumb[] {
-  const normalized = path.replace(/\/+$/, '') || '/'
+  const normalized = path.replace(/^\/+/, '/').replace(/\/+$/, '') || '/'
   if (normalized === '/') {
-    return [{ label: '/', path: '/' }]
+    return [{ label: '', path: '/' }]
   }
 
   const parts = normalized.split('/').filter(Boolean)
-  const crumbs: Crumb[] = [{ label: '/', path: '/' }]
+  const crumbs: Crumb[] = [{ label: '', path: '/' }]
   let accumulated = ''
   for (const part of parts) {
     accumulated += '/' + part
@@ -38,14 +38,14 @@ export function PathBreadcrumbs({ path, onNavigate }: PathBreadcrumbsProps) {
           <span key={crumb.path} className="flex items-center shrink-0">
             {i > 0 && <span className="text-text-muted mx-0.5">/</span>}
             {isLast ? (
-              <span className="text-term-cyan">{crumb.label}</span>
+              <span className="text-term-cyan">{crumb.label || '/'}</span>
             ) : (
               <button
                 type="button"
                 onClick={() => onNavigate(crumb.path)}
                 className="text-text-muted hover:text-purple-bright transition-colors"
               >
-                {crumb.label}
+                {crumb.label || '/'}
               </button>
             )}
           </span>

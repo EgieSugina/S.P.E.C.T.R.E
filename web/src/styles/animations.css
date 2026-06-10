@@ -396,6 +396,49 @@
   animation: card-glitch-rgb 8s steps(1) infinite;
 }
 
+/* ── Connection in-progress card feedback ──────────────────────────────── */
+
+@keyframes card-connecting-pulse {
+  0%, 100% {
+    border-color: var(--border-default);
+    box-shadow: none;
+  }
+  50% {
+    border-color: rgba(var(--accent-rgb), 0.55);
+    box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.25);
+  }
+}
+
+.card-connecting-pulse {
+  animation: card-connecting-pulse 1.4s ease-in-out infinite;
+}
+
+/* ── Connection lost card feedback ─────────────────────────────────────── */
+
+@keyframes card-lost-blink {
+  0%, 100% {
+    border-color: var(--border-default);
+    box-shadow: none;
+    background-color: var(--bg-surface);
+  }
+  12%, 36%, 60% {
+    border-color: rgba(255, 45, 85, 0.9);
+    box-shadow:
+      0 0 14px rgba(255, 45, 85, 0.45),
+      inset 0 0 24px rgba(255, 45, 85, 0.1);
+    background-color: rgba(255, 45, 85, 0.14);
+  }
+  24%, 48%, 72% {
+    border-color: var(--border-default);
+    box-shadow: none;
+    background-color: var(--bg-surface);
+  }
+}
+
+.card-connection-lost-blink {
+  animation: card-lost-blink 2s ease-in-out 1;
+}
+
 /* ── Accessibility ──────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -405,7 +448,9 @@
   .spectre-shimmer-overlay::after,
   .card-disconnected-glitch,
   .card-disconnected-glitch::before,
-  .card-disconnected-glitch::after {
+  .card-disconnected-glitch::after,
+  .card-connection-lost-blink,
+  .card-connecting-pulse {
     animation: none !important;
   }
 

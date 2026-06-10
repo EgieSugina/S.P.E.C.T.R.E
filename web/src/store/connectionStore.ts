@@ -10,9 +10,11 @@ export interface ConnectionLostNotice {
 interface ConnectionStore {
   connections: Connection[]
   activeConnIds: Record<string, string>
+  connectingIds: Record<string, true>
   loading: boolean
   error: string | null
   lostNotice: ConnectionLostNotice | null
+  cardAlerts: Record<string, string>
   fetch: () => Promise<void>
   connect: (id: string) => Promise<string>
   disconnect: (id: string) => Promise<void>
@@ -21,14 +23,17 @@ interface ConnectionStore {
   markConnectionLost: (accountId: string, reason?: string) => void
   clearError: () => void
   clearLostNotice: () => void
+  clearCardAlert: (accountId: string) => void
 }
 
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   connections: [],
   activeConnIds: {},
+  connectingIds: {},
   loading: false,
   error: null,
   lostNotice: null,
+  cardAlerts: {},
 
   fetch: async () => {
     set({ loading: true, error: null })
@@ -41,16 +46,26 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   },
 
   connect: async (id: string) => {
-    set({ error: null })
+    set({ error: null, connectingIds: { ...get().connectingIds, [id]: true } })
     try {
       const result = await connectionsApi.connect(id)
+      const nextConnecting = { ...get().connectingIds }
+      delete nextConnecting[id]
       set({
         activeConnIds: { ...get().activeConnIds, [id]: result.conn_id },
+        connectingIds: nextConnecting,
         error: null,
       })
       return result.conn_id
     } catch (e) {
-      set({ error: formatConnectionError(e) })
+      const msg = formatConnectionError(e)
+      const nextConnecting = { ...get().connectingIds }
+      delete nextConnecting[id]
+      set({
+        error: null,
+        connectingIds: nextConnecting,
+        cardAlerts: { ...get().cardAlerts, [id]: msg },
+      })
       throw e
     }
   },
@@ -78,14 +93,20 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     const next = { ...get().activeConnIds }
     delete next[accountId]
     const userInitiated = reason === 'user_disconnect'
+    const lostReason = reason || 'connection lost'
     set({
       activeConnIds: next,
-      lostNotice: userInitiated
-        ? get().lostNotice
-        : { accountId, reason: reason || 'connection lost' },
+      cardAlerts: userInitiated
+        ? get().cardAlerts
+        : { ...get().cardAlerts, [accountId]: lostReason },
     })
   },
 
   clearError: () => set({ error: null }),
   clearLostNotice: () => set({ lostNotice: null }),
+  clearCardAlert: (accountId) => {
+    const next = { ...get().cardAlerts }
+    delete next[accountId]
+    set({ cardAlerts: next })
+  },
 }))

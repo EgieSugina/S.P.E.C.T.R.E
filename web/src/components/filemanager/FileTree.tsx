@@ -1,10 +1,11 @@
 import { FileEntry } from '@/api/sftp'
-import { Folder, File, ChevronRight } from 'lucide-react'
+import { Folder, File, ChevronRight, Loader2 } from 'lucide-react'
 import { clsx } from 'clsx'
 
 interface FileTreeProps {
   entries: FileEntry[]
   currentPath: string
+  loading?: boolean
   selectedPaths: Set<string>
   onNavigate: (path: string) => void
   onDownload: (path: string) => void
@@ -12,9 +13,31 @@ interface FileTreeProps {
   onToggleSelect: (path: string) => void
 }
 
+function FileTreeSkeleton() {
+  return (
+    <div className="font-mono text-xs" aria-busy="true" aria-label="Loading directory">
+      {Array.from({ length: 8 }, (_, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-2 px-3 py-2 animate-pulse"
+          style={{ animationDelay: `${i * 60}ms` }}
+        >
+          <span className="h-3.5 w-3.5 shrink-0 rounded-sm bg-purple-core/20" />
+          <span className="h-3.5 w-3.5 shrink-0 rounded-sm bg-purple-core/15" />
+          <span
+            className="h-3 flex-1 rounded-sm bg-purple-core/10"
+            style={{ maxWidth: `${40 + (i % 4) * 12}%` }}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function FileTree({
   entries,
   currentPath,
+  loading = false,
   selectedPaths,
   onNavigate,
   onDownload,
@@ -22,6 +45,18 @@ export function FileTree({
   onToggleSelect,
 }: FileTreeProps) {
   const parent = currentPath === '/' ? null : currentPath.replace(/\/[^/]+$/, '') || '/'
+
+  if (loading) {
+    return (
+      <div className="relative">
+        <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b border-purple-core/20 bg-deep/80 px-3 py-2 font-mono text-[10px] text-purple-bright backdrop-blur-sm">
+          <Loader2 size={12} className="animate-spin shrink-0" />
+          Loading directory…
+        </div>
+        <FileTreeSkeleton />
+      </div>
+    )
+  }
 
   return (
     <div className="font-mono text-xs">

@@ -4,16 +4,21 @@ export interface Connection {
   id: string
   name: string
   group_id?: string | null
+  protocol?: string
   host: string
   port: number
   username: string
+  domain?: string
   auth_type: string
+  rdp_width?: number
+  rdp_height?: number
   password?: string
   private_key_id?: string
   tags?: string
   notes?: string
   keep_alive_interval: number
   proxy_tunnel_id?: string | null
+  proxy_chain_id?: string | null
   proxy_type?: string
   proxy_host?: string
   proxy_port?: number

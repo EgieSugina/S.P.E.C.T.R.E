@@ -50,6 +50,7 @@ func (db *DB) migrate() error {
 		&Setting{},
 		&SSHKey{},
 		&Tunnel{},
+		&ProxyChain{},
 		&KnownHost{},
 	)
 }

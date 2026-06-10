@@ -5,6 +5,8 @@ export type SystemEvent =
   | { type: 'tunnel_stopped'; tunnel_id: string }
   | { type: 'session_created'; session_id: string; conn_id?: string }
   | { type: 'session_destroyed'; session_id: string }
+  | { type: 'rdp_session_started'; session_id: string; conn_id?: string }
+  | { type: 'rdp_session_ended'; session_id: string }
   | {
       type: 'broadcast_started'
       batch_id: string

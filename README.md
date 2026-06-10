@@ -10,6 +10,10 @@
 
 SPECTRE is a local-first SSH/SFTP manager that runs as a **single Go binary** with an embedded React web UI. SSH sessions persist in the backend daemon — close your browser tab and the connection stays alive.
 
+![SPECTRE Dashboard](Dashboard.png)
+
+*Active connections, sessions, and tunnels at a glance.*
+
 ## Features
 
 ### Core
@@ -320,6 +324,8 @@ Key endpoints:
 - `GET /sftp/:conn_id/list?path=/` — List remote directory
 - `GET /tunnels` — List proxy/tunnel configs
 - `WS /ws/terminal/:session_id` — Terminal I/O
+- `POST /rdp/sessions` — Create RDP desktop session
+- `WS /ws/rdp/:session_id` — RDP desktop stream (Windows :3389)
 
 Full API docs: [SPECTRE-API.md](SPECTRE-API.md) · OpenAPI: [docs/openapi.yaml](docs/openapi.yaml)
 
@@ -330,6 +336,7 @@ Full API docs: [SPECTRE-API.md](SPECTRE-API.md) · OpenAPI: [docs/openapi.yaml](
 | **1 — MVP** | ✅ Done | Single binary, SPECTRE theme, connection CRUD, multi-tab terminal, SFTP browse/upload/download, encrypted vault, config import/export |
 | **2 — Power** | ✅ Done | SOCKS5 proxy, local port forward, proxy connection graph + route trace (traceroute), parallel uploads + drag-and-drop, live SFTP progress (WebSocket), system log panel, global vault unlock modal, enriched dashboard, SSH key manager, connection groups UI, known-host verification (TOFU + mismatch prompts) |
 | **3 — Advanced** | Planned | Split terminal panes, broadcast commands, jump host / bastion, snippet manager, theme customizer |
+| **3b — RDP** | ✅ Done | In-browser Windows desktop (`protocol: rdp`), NLA via grdp, `/rdp` page, session persistence |
 | **4 — Distribution** | ✅ Done | GoReleaser + checksum signing scaffold, `spectre update`, OS services (`spectre service`), Docker image, install scripts, Homebrew / WinGet templates, KDE tray + autostart |
 
 ## License

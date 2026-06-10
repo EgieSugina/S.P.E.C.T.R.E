@@ -7,6 +7,7 @@ import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { Modal } from '@/components/shared/Modal'
 import { Socks5Config } from '@/components/proxy/Socks5Config'
+import { ChainProxyList } from '@/components/proxy/ChainProxyList'
 import { PortForwardList } from '@/components/proxy/PortForwardList'
 import { ConnectionGraph } from '@/components/proxy/ConnectionGraph'
 import { RouteTrace } from '@/components/proxy/RouteTrace'
@@ -123,6 +124,8 @@ export function ProxyManager() {
           </button>
         </div>
       )}
+
+      <ChainProxyList tunnels={tunnels} connName={connName} />
 
       <section className="mb-8">
         <h3 className="font-display text-sm text-purple-bright mb-4">SOCKS5 Proxies</h3>

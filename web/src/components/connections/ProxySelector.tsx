@@ -1,11 +1,13 @@
 import { Tunnel } from '@/api/tunnels'
+import { ProxyChain } from '@/api/proxyChains'
 import { Input } from '@/components/shared/Input'
 
-export type ProxyMode = 'none' | 'tunnel' | 'manual'
+export type ProxyMode = 'none' | 'tunnel' | 'manual' | 'chain'
 
 export interface ProxyFormValue {
   mode: ProxyMode
   proxy_tunnel_id: string
+  proxy_chain_id: string
   proxy_host: string
   proxy_port: number
 }
@@ -14,6 +16,7 @@ interface ProxySelectorProps {
   value: ProxyFormValue
   onChange: (value: ProxyFormValue) => void
   tunnels: Tunnel[]
+  chains?: ProxyChain[]
   excludeConnectionId?: string
 }
 
@@ -21,13 +24,24 @@ const SOCKS_TYPES = new Set(['socks5', 'dynamic'])
 
 export function proxyFormFromConnection(conn: {
   proxy_tunnel_id?: string | null
+  proxy_chain_id?: string | null
   proxy_host?: string
   proxy_port?: number
 }): ProxyFormValue {
+  if (conn.proxy_chain_id) {
+    return {
+      mode: 'chain',
+      proxy_tunnel_id: '',
+      proxy_chain_id: conn.proxy_chain_id,
+      proxy_host: '',
+      proxy_port: 1080,
+    }
+  }
   if (conn.proxy_tunnel_id) {
     return {
       mode: 'tunnel',
       proxy_tunnel_id: conn.proxy_tunnel_id,
+      proxy_chain_id: '',
       proxy_host: '',
       proxy_port: 1080,
     }
@@ -36,16 +50,27 @@ export function proxyFormFromConnection(conn: {
     return {
       mode: 'manual',
       proxy_tunnel_id: '',
+      proxy_chain_id: '',
       proxy_host: conn.proxy_host,
       proxy_port: conn.proxy_port,
     }
   }
-  return { mode: 'none', proxy_tunnel_id: '', proxy_host: '', proxy_port: 1080 }
+  return { mode: 'none', proxy_tunnel_id: '', proxy_chain_id: '', proxy_host: '', proxy_port: 1080 }
 }
 
 export function proxyPayloadFromForm(form: ProxyFormValue) {
+  if (form.mode === 'chain' && form.proxy_chain_id) {
+    return {
+      proxy_chain_id: form.proxy_chain_id,
+      proxy_tunnel_id: null,
+      proxy_type: undefined,
+      proxy_host: '',
+      proxy_port: 0,
+    }
+  }
   if (form.mode === 'tunnel' && form.proxy_tunnel_id) {
     return {
+      proxy_chain_id: null,
       proxy_tunnel_id: form.proxy_tunnel_id,
       proxy_type: undefined,
       proxy_host: '',
@@ -54,6 +79,7 @@ export function proxyPayloadFromForm(form: ProxyFormValue) {
   }
   if (form.mode === 'manual' && form.proxy_host && form.proxy_port > 0) {
     return {
+      proxy_chain_id: null,
       proxy_tunnel_id: null,
       proxy_type: 'socks5',
       proxy_host: form.proxy_host,
@@ -61,6 +87,7 @@ export function proxyPayloadFromForm(form: ProxyFormValue) {
     }
   }
   return {
+    proxy_chain_id: null,
     proxy_tunnel_id: null,
     proxy_type: '',
     proxy_host: '',
@@ -68,7 +95,13 @@ export function proxyPayloadFromForm(form: ProxyFormValue) {
   }
 }
 
-export function ProxySelector({ value, onChange, tunnels, excludeConnectionId }: ProxySelectorProps) {
+export function ProxySelector({
+  value,
+  onChange,
+  tunnels,
+  chains = [],
+  excludeConnectionId,
+}: ProxySelectorProps) {
   const proxyTunnels = tunnels.filter(
     (t) => SOCKS_TYPES.has(t.type) && t.connection_id !== excludeConnectionId,
   )
@@ -89,9 +122,38 @@ export function ProxySelector({ value, onChange, tunnels, excludeConnectionId }:
         >
           <option value="none">None (direct)</option>
           <option value="tunnel">SPECTRE SOCKS5 tunnel</option>
+          <option value="chain">Proxy chain</option>
           <option value="manual">External SOCKS5</option>
         </select>
       </div>
+
+      {value.mode === 'chain' && (
+        <div>
+          <label className="font-mono text-[10px] text-text-muted uppercase">Proxy chain</label>
+          {chains.length === 0 ? (
+            <p className="font-mono text-xs text-text-muted mt-1">
+              No proxy chains defined. Create one on the Proxy page first.
+            </p>
+          ) : (
+            <select
+              value={value.proxy_chain_id}
+              onChange={(e) => onChange({ ...value, proxy_chain_id: e.target.value })}
+              required
+              className="w-full mt-1 bg-deep border border-[var(--border-default)] rounded-brutal px-3 py-2 font-mono text-xs text-[var(--text-primary)] focus:border-purple-core/60 focus:outline-none"
+            >
+              <option value="">Select chain...</option>
+              {chains.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.hops.length} hops)
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="font-mono text-[10px] text-text-muted mt-1.5">
+            All tunnels in the chain must be running before you connect.
+          </p>
+        </div>
+      )}
 
       {value.mode === 'tunnel' && (
         <div>
@@ -150,11 +212,20 @@ export function ProxySelector({ value, onChange, tunnels, excludeConnectionId }:
 export function proxyLabel(
   conn: {
     proxy_tunnel_id?: string | null
+    proxy_chain_id?: string | null
     proxy_host?: string
     proxy_port?: number
   },
   tunnels: Tunnel[],
+  chains: ProxyChain[] = [],
 ): string | null {
+  if (conn.proxy_chain_id) {
+    const chain = chains.find((c) => c.id === conn.proxy_chain_id)
+    if (chain) {
+      return `via chain ${chain.name}`
+    }
+    return 'via proxy chain'
+  }
   if (conn.proxy_tunnel_id) {
     const tunnel = tunnels.find((t) => t.id === conn.proxy_tunnel_id)
     if (tunnel) {

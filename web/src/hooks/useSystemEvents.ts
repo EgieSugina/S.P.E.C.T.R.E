@@ -24,7 +24,7 @@ export function useSystemEvents() {
             switch (msg.type) {
               case 'connection_down':
                 markConnectionLost(msg.connection_id, msg.reason)
-                if (msg.conn_id) onFileConnectionLost(msg.conn_id)
+                if ('conn_id' in msg && msg.conn_id) onFileConnectionLost(msg.conn_id)
                 break
               case 'broadcast_started':
               case 'broadcast_completed':

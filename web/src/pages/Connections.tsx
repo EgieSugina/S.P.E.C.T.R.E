@@ -5,20 +5,21 @@ import { useConnectionStore } from '@/store/connectionStore'
 import { useGroupStore } from '@/store/groupStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { useTerminalStore } from '@/store/terminalStore'
+import { useRdpStore } from '@/store/rdpStore'
 import { ConnectionList } from '@/components/connections/ConnectionList'
 import { GroupSidebar } from '@/components/connections/GroupSidebar'
 import { AddConnectionModal } from '@/components/connections/AddConnectionModal'
 import { HostKeyTrustModal, parseHostKeyMismatch } from '@/components/connections/HostKeyTrustModal'
 import { HostKeyMismatchDetails } from '@/api/knownHosts'
 import { Tunnel, tunnelsApi } from '@/api/tunnels'
+import { ProxyChain, proxyChainsApi } from '@/api/proxyChains'
 import { Button } from '@/components/shared/Button'
-import { formatDisconnectReason } from '@/lib/connectionErrors'
-
 export function Connections() {
   const navigate = useNavigate()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [tunnels, setTunnels] = useState<Tunnel[]>([])
+  const [chains, setChains] = useState<ProxyChain[]>([])
   const [hostKeyPrompt, setHostKeyPrompt] = useState<{
     connectionId: string
     details: HostKeyMismatchDetails
@@ -33,18 +34,18 @@ export function Connections() {
     remove,
     assignGroup,
     clearError,
-    lostNotice,
-    clearLostNotice,
   } = useConnectionStore()
   const { groups, fetch: fetchGroups } = useGroupStore()
   const { vaultLocked, vaultConfigured, fetch: fetchSettings, openVaultModal } = useSettingsStore()
   const addTab = useTerminalStore((s) => s.addTab)
+  const addRdpTab = useRdpStore((s) => s.addTab)
 
   useEffect(() => {
     fetch()
     fetchGroups()
     fetchSettings()
     tunnelsApi.list().then(setTunnels).catch(() => setTunnels([]))
+    proxyChainsApi.list().then(setChains).catch(() => setChains([]))
   }, [fetch, fetchGroups, fetchSettings])
 
   const { counts, ungroupedCount } = useMemo(() => {
@@ -93,6 +94,11 @@ export function Connections() {
     navigate('/terminal')
   }
 
+  const handleDesktop = async (connectionId: string, connId: string, name: string) => {
+    await addRdpTab(connectionId, connId, name)
+    navigate('/rdp')
+  }
+
   return (
     <div className="p-6 h-full overflow-auto">
       <div className="flex items-center justify-between mb-6">
@@ -109,24 +115,6 @@ export function Connections() {
           {vaultConfigured
             ? 'Vault is locked. Connect to unlock, or use Settings.'
             : 'Vault not configured. Connect or save a connection to set up your master password.'}
-        </div>
-      )}
-      {lostNotice && (
-        <div
-          className="mb-4 border border-amber-500/40 bg-amber-500/10 rounded-brutal px-4 py-3 font-mono text-xs text-amber-200 flex items-center justify-between gap-3"
-          role="status"
-        >
-          <span>
-            {connections.find((c) => c.id === lostNotice.accountId)?.name ?? 'Connection'}{' '}
-            — {formatDisconnectReason(lostNotice.reason)}
-          </span>
-          <button
-            type="button"
-            onClick={clearLostNotice}
-            className="text-text-muted hover:text-[var(--text-primary)] shrink-0"
-          >
-            Dismiss
-          </button>
         </div>
       )}
       {error && (
@@ -150,6 +138,7 @@ export function Connections() {
             connections={connections}
             groups={groups}
             tunnels={tunnels}
+            chains={chains}
             activeConnIds={activeConnIds}
             selectedGroupId={selectedGroupId}
             vaultLocked={vaultLocked}
@@ -157,6 +146,7 @@ export function Connections() {
             onDisconnect={disconnect}
             onDelete={remove}
             onTerminal={handleTerminal}
+            onDesktop={handleDesktop}
             onAssignGroup={assignGroup}
           />
         </div>

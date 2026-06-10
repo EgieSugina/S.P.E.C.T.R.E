@@ -23,6 +23,7 @@ import (
 
 	"spectre/internal/config"
 	"spectre/internal/crypto"
+	"spectre/internal/rdp"
 	"spectre/internal/sftp"
 	"spectre/internal/ssh"
 	"spectre/internal/store"
@@ -42,6 +43,7 @@ type Server struct {
 	db        *store.DB
 	vault     *crypto.Vault
 	sshMgr    *ssh.Manager
+	rdpMgr    *rdp.Manager
 	sftpMgr   *sftp.Manager
 	tunnelMgr *tunnel.Manager
 	uploadQ   *sftp.UploadQueue
@@ -78,6 +80,7 @@ func New(bind string, port int, configDir string) (*Server, error) {
 		db:        db,
 		vault:     crypto.NewVault(),
 		sshMgr:    ssh.NewManager(),
+		rdpMgr:    rdp.NewManager(),
 		sftpMgr:   sftp.NewManager(),
 		uploadQ:   sftp.NewUploadQueue(maxConc),
 		sftpHub:    newSFTPWSHub(),
@@ -92,6 +95,16 @@ func New(bind string, port int, configDir string) (*Server, error) {
 			"connection_id": accountID,
 			"conn_id":       connID,
 			"reason":        reason,
+			"protocol":      "ssh",
+		})
+	})
+	srv.rdpMgr.SetConnectionLostHandler(func(accountID, connID, reason string) {
+		srv.systemHub.Emit(map[string]interface{}{
+			"type":          "connection_down",
+			"connection_id": accountID,
+			"conn_id":       connID,
+			"reason":        reason,
+			"protocol":      "rdp",
 		})
 	})
 	srv.tunnelMgr = tunnel.NewManager(srv.ensureSSHForTunnel)
@@ -161,6 +174,11 @@ func (s *Server) Start(ctx context.Context) error {
 			r.Get("/sessions/{id}", s.handleGetSession)
 			r.Delete("/sessions/{id}", s.handleKillSession)
 
+			r.Get("/rdp/sessions", s.handleListRdpSessions)
+			r.Post("/rdp/sessions", s.handleCreateRdpSession)
+			r.Get("/rdp/sessions/{id}", s.handleGetRdpSession)
+			r.Delete("/rdp/sessions/{id}", s.handleKillRdpSession)
+
 			r.Get("/sftp/{connID}/list", s.handleSFTPList)
 			r.Get("/sftp/{connID}/home", s.handleSFTPHome)
 			r.Get("/sftp/{connID}/stat", s.handleSFTPStat)
@@ -179,6 +197,12 @@ func (s *Server) Start(ctx context.Context) error {
 			r.Post("/tunnels/{id}/stop", s.handleStopTunnel)
 			r.Get("/tunnels/{id}/stats", s.handleTunnelStats)
 
+			r.Get("/proxy-chains", s.handleListProxyChains)
+			r.Post("/proxy-chains", s.handleCreateProxyChain)
+			r.Get("/proxy-chains/{id}", s.handleGetProxyChain)
+			r.Put("/proxy-chains/{id}", s.handleUpdateProxyChain)
+			r.Delete("/proxy-chains/{id}", s.handleDeleteProxyChain)
+
 			r.Get("/settings", s.handleGetSettings)
 			r.Put("/settings", s.handleUpdateSettings)
 
@@ -193,6 +217,7 @@ func (s *Server) Start(ctx context.Context) error {
 	})
 
 	r.Get("/ws/terminal/{sessionID}", s.handleTerminalWS)
+	r.Get("/ws/rdp/{sessionID}", s.handleRdpWS)
 	r.Get("/ws/sftp/{connID}", s.handleSFTPWS)
 	r.Get("/ws/tunnels", s.handleTunnelsWS)
 	r.Get("/ws/system", s.handleSystemWS)
@@ -247,6 +272,9 @@ func (s *Server) handleCreateConnection(w http.ResponseWriter, r *http.Request) 
 	if conn.AuthType == "" {
 		conn.AuthType = "password"
 	}
+	if conn.Protocol == "" {
+		conn.Protocol = "ssh"
+	}
 	if err := s.validateConnectionCredentials(&conn); err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_INPUT", err.Error())
 		return
@@ -290,16 +318,23 @@ func (s *Server) handleUpdateConnection(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	existing.Name = input.Name
+	if input.Protocol != "" {
+		existing.Protocol = input.Protocol
+	}
 	existing.Host = input.Host
 	existing.Port = input.Port
 	existing.Username = input.Username
+	existing.Domain = input.Domain
 	existing.AuthType = input.AuthType
+	existing.RdpWidth = input.RdpWidth
+	existing.RdpHeight = input.RdpHeight
 	existing.GroupID = input.GroupID
 	existing.Tags = input.Tags
 	existing.Notes = input.Notes
 	existing.KeepAliveInterval = input.KeepAliveInterval
 	existing.PrivateKeyID = input.PrivateKeyID
 	existing.ProxyTunnelID = input.ProxyTunnelID
+	existing.ProxyChainID = input.ProxyChainID
 	existing.ProxyType = input.ProxyType
 	existing.ProxyHost = input.ProxyHost
 	existing.ProxyPort = input.ProxyPort
@@ -341,6 +376,12 @@ func (s *Server) connectionHasEncryptedSecrets(conn *store.Connection) bool {
 }
 
 func (s *Server) validateConnectionCredentials(conn *store.Connection) error {
+	if connectionProtocol(conn) == "rdp" {
+		if conn.Password == "" && conn.PasswordEnc == "" {
+			return fmt.Errorf("password is required for RDP")
+		}
+		return nil
+	}
 	authType := conn.AuthType
 	if authType == "" {
 		authType = "password"
@@ -410,11 +451,12 @@ func (s *Server) buildAccountConfig(conn *store.Connection) (*ssh.AccountConfig,
 	if !ssh.HasAuthMethods(cfg) {
 		return nil, fmt.Errorf("no credentials configured")
 	}
-	proxyCfg, err := s.resolveProxyConfig(conn)
+	proxyCfg, proxyChain, err := s.resolveProxyConfig(conn)
 	if err != nil {
 		return nil, err
 	}
 	cfg.Proxy = proxyCfg
+	cfg.ProxyChain = proxyChain
 	return cfg, nil
 }
 
@@ -424,78 +466,151 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "Connection not found")
 		return
 	}
-	cfg, err := s.buildAccountConfig(conn)
-	if err != nil {
-		code, status := "AUTH_FAILED", http.StatusUnauthorized
-		errMsg := strings.ToLower(err.Error())
-		switch {
-		case strings.Contains(errMsg, "vault"):
-			code, status = "VAULT_LOCKED", http.StatusForbidden
-		case strings.Contains(errMsg, "proxy"), strings.Contains(errMsg, "tunnel"):
-			code, status = "PROXY_FAILED", http.StatusBadGateway
+
+	var connID string
+	proto := connectionProtocol(conn)
+
+	switch proto {
+	case "rdp":
+		cfg, err := s.buildRdpAccountConfig(conn)
+		if err != nil {
+			code, status := "AUTH_FAILED", http.StatusUnauthorized
+			if strings.Contains(strings.ToLower(err.Error()), "vault") {
+				code, status = "VAULT_LOCKED", http.StatusForbidden
+			}
+			writeError(w, status, code, err.Error())
+			return
 		}
-		writeError(w, status, code, err.Error())
-		return
-	}
-	connID, err := s.sshMgr.Connect(conn.ID, cfg)
-	if err != nil {
-		var mismatch *ssh.HostKeyMismatchError
-		if errors.As(err, &mismatch) {
-			writeErrorWithDetails(w, http.StatusConflict, "HOST_KEY_MISMATCH", err.Error(), map[string]interface{}{
-				"host":                  mismatch.Host,
-				"port":                  mismatch.Port,
-				"expected_fingerprint":  mismatch.Expected,
-				"received_fingerprint":  mismatch.Received,
-				"received_key":          mismatch.ReceivedKey,
-				"key_type":              mismatch.KeyType,
+		connID, err = s.rdpMgr.Connect(conn.ID, cfg)
+		if err != nil {
+			writeErrorWithDetails(w, http.StatusBadGateway, "HOST_UNREACHABLE", err.Error(), map[string]interface{}{
+				"detail":   err.Error(),
+				"protocol": "rdp",
 			})
 			return
 		}
-		code, message := ssh.ClassifyConnectError(err)
-		writeErrorWithDetails(w, httpStatusForConnectCode(code), code, message, map[string]interface{}{
-			"detail": err.Error(),
-		})
-		return
+	default:
+		cfg, err := s.buildAccountConfig(conn)
+		if err != nil {
+			code, status := "AUTH_FAILED", http.StatusUnauthorized
+			errMsg := strings.ToLower(err.Error())
+			switch {
+			case strings.Contains(errMsg, "vault"):
+				code, status = "VAULT_LOCKED", http.StatusForbidden
+			case strings.Contains(errMsg, "proxy"), strings.Contains(errMsg, "tunnel"):
+				code, status = "PROXY_FAILED", http.StatusBadGateway
+			}
+			writeError(w, status, code, err.Error())
+			return
+		}
+		connID, err = s.sshMgr.Connect(conn.ID, cfg)
+		if err != nil {
+			var mismatch *ssh.HostKeyMismatchError
+			if errors.As(err, &mismatch) {
+				writeErrorWithDetails(w, http.StatusConflict, "HOST_KEY_MISMATCH", err.Error(), map[string]interface{}{
+					"host":                  mismatch.Host,
+					"port":                  mismatch.Port,
+					"expected_fingerprint":  mismatch.Expected,
+					"received_fingerprint":  mismatch.Received,
+					"received_key":          mismatch.ReceivedKey,
+					"key_type":              mismatch.KeyType,
+				})
+				return
+			}
+			code, message := ssh.ClassifyConnectError(err)
+			writeErrorWithDetails(w, httpStatusForConnectCode(code), code, message, map[string]interface{}{
+				"detail": err.Error(),
+			})
+			return
+		}
 	}
+
 	_ = s.db.TouchLastConnected(conn.ID)
 	s.systemHub.Emit(map[string]interface{}{
 		"type":          "connection_up",
 		"connection_id": conn.ID,
 		"name":          conn.Name,
+		"protocol":      proto,
 	})
-	writeJSON(w, http.StatusOK, map[string]string{"conn_id": connID, "status": "connected"})
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"conn_id":  connID,
+		"status":   "connected",
+		"protocol": proto,
+	})
 }
 
 func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 	accountID := chi.URLParam(r, "id")
-	conn, ok := s.sshMgr.GetByAccountID(accountID)
-	if !ok {
-		writeError(w, http.StatusNotFound, "NOT_FOUND", "No active connection")
-		return
+	dbConn, dbErr := s.db.GetConnection(accountID)
+	proto := "ssh"
+	if dbErr == nil {
+		proto = connectionProtocol(dbConn)
 	}
-	s.sftpMgr.Remove(conn.ID)
-	if err := s.sshMgr.Disconnect(conn.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-		return
+
+	if proto == "rdp" {
+		conn, ok := s.rdpMgr.GetByAccountID(accountID)
+		if !ok {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "No active connection")
+			return
+		}
+		if err := s.rdpMgr.Disconnect(conn.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			return
+		}
+	} else {
+		conn, ok := s.sshMgr.GetByAccountID(accountID)
+		if !ok {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "No active connection")
+			return
+		}
+		s.sftpMgr.Remove(conn.ID)
+		if err := s.sshMgr.Disconnect(conn.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			return
+		}
 	}
 	s.systemHub.Emit(map[string]interface{}{
 		"type":          "connection_down",
 		"connection_id": accountID,
 		"reason":        "user_disconnect",
+		"protocol":      proto,
 	})
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (s *Server) handleConnectionStatus(w http.ResponseWriter, r *http.Request) {
-	conn, ok := s.sshMgr.GetByAccountID(chi.URLParam(r, "id"))
+	accountID := chi.URLParam(r, "id")
+	dbConn, err := s.db.GetConnection(accountID)
+	proto := "ssh"
+	if err == nil {
+		proto = connectionProtocol(dbConn)
+	}
+
+	if proto == "rdp" {
+		conn, ok := s.rdpMgr.GetByAccountID(accountID)
+		if !ok {
+			writeJSON(w, http.StatusOK, map[string]string{"status": "disconnected", "protocol": "rdp"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"status":   conn.State,
+			"conn_id":  conn.ID,
+			"since":    conn.ConnectedAt,
+			"protocol": "rdp",
+		})
+		return
+	}
+
+	conn, ok := s.sshMgr.GetByAccountID(accountID)
 	if !ok {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "disconnected"})
+		writeJSON(w, http.StatusOK, map[string]string{"status": "disconnected", "protocol": "ssh"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":   conn.State,
 		"conn_id":  conn.ID,
 		"since":    conn.ConnectedAt,
+		"protocol": "ssh",
 	})
 }
 

@@ -28,6 +28,7 @@ type AccountConfig struct {
 	PrivateKey string
 	Passphrase string
 	Proxy      *proxy.DialConfig
+	ProxyChain []proxy.DialConfig
 }
 
 type ManagedConnection struct {
@@ -84,7 +85,7 @@ func (m *Manager) Connect(accountID string, cfg *AccountConfig) (string, error) 
 	}
 
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
-	client, err := dialSSH(addr, sshConfig, cfg.Proxy)
+	client, err := dialSSH(addr, sshConfig, cfg.Proxy, cfg.ProxyChain)
 	if err != nil {
 		return "", err
 	}

@@ -61,14 +61,19 @@ func ImportJSON(db *store.DB, data []byte, masterPassword string, salt []byte) (
 			count++
 		} else {
 			existing.Name = conn.Name
+			existing.Protocol = conn.Protocol
 			existing.Host = conn.Host
 			existing.Port = conn.Port
 			existing.Username = conn.Username
+			existing.Domain = conn.Domain
 			existing.AuthType = conn.AuthType
+			existing.RdpWidth = conn.RdpWidth
+			existing.RdpHeight = conn.RdpHeight
 			existing.GroupID = conn.GroupID
 			existing.Tags = conn.Tags
 			existing.Notes = conn.Notes
 			existing.ProxyTunnelID = conn.ProxyTunnelID
+			existing.ProxyChainID = conn.ProxyChainID
 			existing.ProxyType = conn.ProxyType
 			existing.ProxyHost = conn.ProxyHost
 			existing.ProxyPort = conn.ProxyPort

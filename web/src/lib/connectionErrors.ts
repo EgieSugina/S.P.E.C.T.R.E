@@ -15,7 +15,16 @@ export function formatConnectionError(e: unknown): string {
   if (e instanceof ApiError) {
     const base = FRIENDLY[e.code] ?? e.message
     if (FRIENDLY[e.code] && e.message && e.message !== base) {
-      return `${base} (${e.message})`
+      const detail = e.message.toLowerCase()
+      const baseLower = base.toLowerCase()
+      const redundant =
+        detail.includes('timeout') && baseLower.includes('timeout') ||
+        detail.includes('unreachable') && baseLower.includes('unreachable') ||
+        detail.includes('authentication') && baseLower.includes('authentication') ||
+        detail.includes('proxy') && baseLower.includes('proxy')
+      if (!redundant) {
+        return `${base} (${e.message})`
+      }
     }
     return base
   }
@@ -23,10 +32,22 @@ export function formatConnectionError(e: unknown): string {
 }
 
 export function formatDisconnectReason(reason: string): string {
+  if (!reason) return FRIENDLY.CONNECTION_LOST
+  if (reason === 'user_disconnect') return 'Disconnected'
+
   const lower = reason.toLowerCase()
   if (lower.includes('keepalive')) return 'Connection lost — keepalive failed'
-  if (lower.includes('timeout')) return 'Connection lost — timed out'
+  if (lower.includes('timeout') || lower.includes('timed out')) return FRIENDLY.TIMEOUT
   if (lower.includes('reset')) return 'Connection lost — reset by remote host'
-  if (lower.includes('closed')) return 'Connection closed by remote host'
+  if (lower.includes('closed') || lower.includes('ended')) return 'Connection closed by remote host'
+  if (lower === 'connection lost') return FRIENDLY.CONNECTION_LOST
+
+  // Already a full user-facing sentence (e.g. from formatConnectionError).
+  if (/[.!?]$/.test(reason.trim()) || reason.includes(' — ')) return reason
+
+  if (/^(connection|ssh|rdp)\s/i.test(reason)) {
+    return reason.charAt(0).toUpperCase() + reason.slice(1)
+  }
+
   return `Connection lost — ${reason}`
 }

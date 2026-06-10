@@ -19,6 +19,7 @@ tags:
   - name: known-hosts
   - name: keys
   - name: sessions
+  - name: rdp
   - name: sftp
   - name: tunnels
   - name: trace
@@ -69,6 +70,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        protocol:
+          type: string
+          enum: [ssh, rdp]
+          default: ssh
         host:
           type: string
         port:
@@ -76,6 +81,9 @@ components:
           default: 22
         username:
           type: string
+        domain:
+          type: string
+          description: Windows domain (RDP only)
         auth_type:
           type: string
           enum: [password, key, key+passphrase]
@@ -89,6 +97,12 @@ components:
           type: string
         keep_alive_interval:
           type: integer
+        rdp_width:
+          type: integer
+          default: 1280
+        rdp_height:
+          type: integer
+          default: 720
         proxy_tunnel_id:
           type: string
           format: uuid
@@ -206,6 +220,26 @@ components:
         conn_id:
           type: string
           format: uuid
+
+    RdpSession:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        id:
+          type: string
+          format: uuid
+        conn_id:
+          type: string
+          format: uuid
+        width:
+          type: integer
+        height:
+          type: integer
+        protocol:
+          type: string
+          enum: [rdp]
 
     Tunnel:
       type: object
@@ -868,6 +902,68 @@ paths:
     delete:
       tags: [sessions]
       summary: Kill session
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /rdp/sessions:
+    get:
+      tags: [rdp]
+      summary: List active RDP desktop sessions
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RdpSession'
+    post:
+      tags: [rdp]
+      summary: Create RDP desktop session
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conn_id]
+              properties:
+                conn_id:
+                  type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RdpSession'
+
+  /rdp/sessions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [rdp]
+      summary: Get RDP session
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RdpSession'
+    delete:
+      tags: [rdp]
+      summary: Kill RDP session
       security: [{ SpectreToken: [] }]
       responses:
         '200':

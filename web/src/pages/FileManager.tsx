@@ -8,6 +8,7 @@ import { DropZone } from '@/components/filemanager/DropZone'
 import { UploadQueuePanel } from '@/components/filemanager/UploadQueue'
 import { sftpApi } from '@/api/sftp'
 import { Button } from '@/components/shared/Button'
+import { EmptySessionPane } from '@/components/shared/EmptySessionPane'
 import { Modal } from '@/components/shared/Modal'
 import { useUploadQueue } from '@/hooks/useUploadQueue'
 import { useSftpProgress } from '@/hooks/useSftpProgress'
@@ -15,8 +16,17 @@ import { collectFromFileList } from '@/lib/localFiles'
 
 export function FileManagerPage() {
   const { connections, activeConnIds, fetch } = useConnectionStore()
-  const { connId, currentPath, entries, error: fileError, setConnId, navigate, refresh, clearError } =
-    useFileStore()
+  const {
+    connId,
+    currentPath,
+    entries,
+    loading,
+    error: fileError,
+    setConnId,
+    navigate,
+    refresh,
+    clearError,
+  } = useFileStore()
   const { enqueue, enqueueTree } = useUploadQueue()
   const queue = useUploadQueue((s) => s.queue)
   const clearCompleted = useUploadQueue((s) => s.clearCompleted)
@@ -207,6 +217,7 @@ export function FileManagerPage() {
             <FileTree
               entries={entries}
               currentPath={currentPath}
+              loading={loading}
               selectedPaths={selectedPaths}
               onNavigate={navigate}
               onDownload={(path) => window.open(sftpApi.downloadUrl(connId, path), '_blank')}
@@ -215,9 +226,10 @@ export function FileManagerPage() {
             />
           </DropZone>
         ) : (
-          <div className="flex items-center justify-center h-full font-mono text-text-muted text-sm">
-            Connect to a server, then select it here.
-          </div>
+          <EmptySessionPane
+            variant="files"
+            hasActiveConnection={activeConnections.length > 0}
+          />
         )}
       </div>
       <UploadQueuePanel />
