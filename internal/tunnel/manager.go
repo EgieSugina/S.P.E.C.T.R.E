@@ -1,7 +1,10 @@
 package tunnel
 
 import (
+	"errors"
 	"fmt"
+	"net"
+	"strconv"
 	"sync"
 
 	"golang.org/x/crypto/ssh"
@@ -9,6 +12,8 @@ import (
 	"spectre/internal/proxy"
 	"spectre/internal/store"
 )
+
+var ErrPortBusy = errors.New("local port already in use by another running tunnel")
 
 type Status string
 
@@ -58,11 +63,53 @@ func (m *Manager) Status(id string) (Status, string) {
 	return rt.status, rt.errMsg
 }
 
+func normalizeBindHost(host string) string {
+	if host == "" {
+		return "127.0.0.1"
+	}
+	return host
+}
+
+func (m *Manager) runningBindConflict(host string, port int, excludeID string) (string, bool) {
+	host = normalizeBindHost(host)
+	for id, rt := range m.running {
+		if id == excludeID || rt.status != StatusRunning {
+			continue
+		}
+		var bindAddr string
+		switch {
+		case rt.socks5 != nil:
+			bindAddr = rt.socks5.BindAddr()
+		case rt.forward != nil:
+			bindAddr = rt.forward.BindAddr()
+		default:
+			continue
+		}
+		conflictHost, conflictPort, err := net.SplitHostPort(bindAddr)
+		if err != nil {
+			continue
+		}
+		if normalizeBindHost(conflictHost) == host && atoiPort(conflictPort) == port {
+			return id, true
+		}
+	}
+	return "", false
+}
+
+func atoiPort(port string) int {
+	n, _ := strconv.Atoi(port)
+	return n
+}
+
 func (m *Manager) Start(t *store.Tunnel) error {
 	m.mu.Lock()
 	if rt, ok := m.running[t.ID]; ok && rt.status == StatusRunning {
 		m.mu.Unlock()
 		return fmt.Errorf("tunnel already running")
+	}
+	if conflictID, busy := m.runningBindConflict(t.LocalHost, t.LocalPort, t.ID); busy {
+		m.mu.Unlock()
+		return fmt.Errorf("%w (tunnel %s)", ErrPortBusy, conflictID)
 	}
 	m.mu.Unlock()
 
@@ -102,6 +149,18 @@ func (m *Manager) Start(t *store.Tunnel) error {
 	}
 
 	m.mu.Lock()
+	if conflictID, busy := m.runningBindConflict(t.LocalHost, t.LocalPort, t.ID); busy {
+		m.mu.Unlock()
+		if rt.socks5 != nil {
+			rt.socks5.Stop()
+		}
+		if rt.forward != nil {
+			rt.forward.Stop()
+		}
+		err := fmt.Errorf("%w (tunnel %s)", ErrPortBusy, conflictID)
+		m.setError(t.ID, err.Error())
+		return err
+	}
 	m.running[t.ID] = rt
 	m.mu.Unlock()
 	return nil
@@ -124,6 +183,19 @@ func (m *Manager) Stop(id string) error {
 		rt.forward.Stop()
 	}
 	return nil
+}
+
+func (m *Manager) BindAddr(id string) (string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	rt, ok := m.running[id]
+	if !ok || rt.status != StatusRunning {
+		return "", fmt.Errorf("tunnel not running")
+	}
+	if rt.socks5 != nil {
+		return rt.socks5.BindAddr(), nil
+	}
+	return "", fmt.Errorf("tunnel is not a SOCKS5 proxy")
 }
 
 func (m *Manager) Stats(id string) (Stats, error) {

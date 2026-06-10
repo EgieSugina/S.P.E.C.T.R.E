@@ -84,6 +84,15 @@ func New(bind string, port int, configDir string) (*Server, error) {
 		systemHub: newSystemWSHub(),
 	}
 	srv.sshMgr.SetHostKeyCallback(ssh.NewHostKeyCallback(db))
+	srv.sshMgr.SetConnectionLostHandler(func(accountID, connID, reason string) {
+		srv.sftpMgr.Remove(connID)
+		srv.systemHub.Emit(map[string]interface{}{
+			"type":          "connection_down",
+			"connection_id": accountID,
+			"conn_id":       connID,
+			"reason":        reason,
+		})
+	})
 	srv.tunnelMgr = tunnel.NewManager(srv.ensureSSHForTunnel)
 	return srv, nil
 }
@@ -238,6 +247,10 @@ func (s *Server) handleCreateConnection(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "INVALID_INPUT", err.Error())
 		return
 	}
+	if err := s.validateProxyConfig(&conn); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_INPUT", err.Error())
+		return
+	}
 	if err := s.encryptConnectionSecrets(&conn); err != nil {
 		writeError(w, http.StatusForbidden, "VAULT_LOCKED", "Unlock vault before saving credentials")
 		return
@@ -282,6 +295,14 @@ func (s *Server) handleUpdateConnection(w http.ResponseWriter, r *http.Request) 
 	existing.Notes = input.Notes
 	existing.KeepAliveInterval = input.KeepAliveInterval
 	existing.PrivateKeyID = input.PrivateKeyID
+	existing.ProxyTunnelID = input.ProxyTunnelID
+	existing.ProxyType = input.ProxyType
+	existing.ProxyHost = input.ProxyHost
+	existing.ProxyPort = input.ProxyPort
+	if err := s.validateProxyConfig(existing); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_INPUT", err.Error())
+		return
+	}
 	if input.Password != "" {
 		existing.Password = input.Password
 	}
@@ -385,6 +406,11 @@ func (s *Server) buildAccountConfig(conn *store.Connection) (*ssh.AccountConfig,
 	if !ssh.HasAuthMethods(cfg) {
 		return nil, fmt.Errorf("no credentials configured")
 	}
+	proxyCfg, err := s.resolveProxyConfig(conn)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Proxy = proxyCfg
 	return cfg, nil
 }
 
@@ -397,8 +423,12 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	cfg, err := s.buildAccountConfig(conn)
 	if err != nil {
 		code, status := "AUTH_FAILED", http.StatusUnauthorized
-		if strings.Contains(strings.ToLower(err.Error()), "vault") {
+		errMsg := strings.ToLower(err.Error())
+		switch {
+		case strings.Contains(errMsg, "vault"):
 			code, status = "VAULT_LOCKED", http.StatusForbidden
+		case strings.Contains(errMsg, "proxy"), strings.Contains(errMsg, "tunnel"):
+			code, status = "PROXY_FAILED", http.StatusBadGateway
 		}
 		writeError(w, status, code, err.Error())
 		return
@@ -417,8 +447,10 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		code, status := classifySSHConnectError(err)
-		writeError(w, status, code, err.Error())
+		code, message := ssh.ClassifyConnectError(err)
+		writeErrorWithDetails(w, httpStatusForConnectCode(code), code, message, map[string]interface{}{
+			"detail": err.Error(),
+		})
 		return
 	}
 	_ = s.db.TouchLastConnected(conn.ID)
@@ -445,6 +477,7 @@ func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 	s.systemHub.Emit(map[string]interface{}{
 		"type":          "connection_down",
 		"connection_id": accountID,
+		"reason":        "user_disconnect",
 	})
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
@@ -495,15 +528,16 @@ func (s *Server) handleExportConnections(w http.ResponseWriter, r *http.Request)
 	w.Write(data)
 }
 
-func classifySSHConnectError(err error) (code string, status int) {
-	msg := strings.ToLower(err.Error())
-	switch {
-	case strings.Contains(msg, "no credentials"):
-		return "AUTH_FAILED", http.StatusUnauthorized
-	case strings.Contains(msg, "unable to authenticate"), strings.Contains(msg, "no supported methods"):
-		return "AUTH_FAILED", http.StatusUnauthorized
+func httpStatusForConnectCode(code string) int {
+	switch code {
+	case "AUTH_FAILED":
+		return http.StatusUnauthorized
+	case "VAULT_LOCKED":
+		return http.StatusForbidden
+	case "HOST_KEY_MISMATCH":
+		return http.StatusConflict
 	default:
-		return "HOST_UNREACHABLE", http.StatusBadGateway
+		return http.StatusBadGateway
 	}
 }
 
@@ -596,7 +630,12 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 	session, err := s.sshMgr.CreateTerminalSession(req.ConnID, req.Cols, req.Rows)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, "HOST_UNREACHABLE", err.Error())
+		code, message := "CONNECTION_LOST", "SSH connection is no longer active"
+		if strings.Contains(strings.ToLower(err.Error()), "not active") {
+			writeError(w, http.StatusBadGateway, code, message)
+		} else {
+			writeError(w, http.StatusBadGateway, "HOST_UNREACHABLE", err.Error())
+		}
 		return
 	}
 	s.systemHub.Emit(map[string]interface{}{
@@ -636,7 +675,7 @@ func (s *Server) getSFTPClient(w http.ResponseWriter, r *http.Request) (*pkgsftp
 	connID := chi.URLParam(r, "connID")
 	conn, ok := s.sshMgr.GetConnection(connID)
 	if !ok {
-		writeError(w, http.StatusNotFound, "NOT_FOUND", "Connection not active")
+		writeError(w, http.StatusBadGateway, "CONNECTION_LOST", "SSH connection is no longer active")
 		return nil, "", false
 	}
 	client, err := s.sftpMgr.GetOrCreate(connID, conn.Client)

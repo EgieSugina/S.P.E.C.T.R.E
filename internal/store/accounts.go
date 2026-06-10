@@ -53,5 +53,9 @@ func (db *DB) ConnectionToExport(conn Connection) map[string]interface{} {
 		"tags":                tags,
 		"notes":               conn.Notes,
 		"keep_alive_interval": conn.KeepAliveInterval,
+		"proxy_tunnel_id":     conn.ProxyTunnelID,
+		"proxy_type":          conn.ProxyType,
+		"proxy_host":          conn.ProxyHost,
+		"proxy_port":          conn.ProxyPort,
 	}
 }

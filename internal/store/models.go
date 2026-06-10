@@ -23,6 +23,10 @@ type Connection struct {
 	Tags              string     `json:"tags"`
 	Notes             string     `json:"notes"`
 	KeepAliveInterval int        `json:"keep_alive_interval"`
+	ProxyTunnelID     *string    `json:"proxy_tunnel_id,omitempty"`
+	ProxyType         string     `json:"proxy_type,omitempty"`
+	ProxyHost         string     `json:"proxy_host,omitempty"`
+	ProxyPort         int        `json:"proxy_port,omitempty"`
 	CreatedAt         time.Time  `json:"created_at"`
 	LastConnectedAt   *time.Time `json:"last_connected_at,omitempty"`
 }

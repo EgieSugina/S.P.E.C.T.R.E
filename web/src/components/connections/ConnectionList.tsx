@@ -1,9 +1,11 @@
 import { Connection, Group } from '@/api/connections'
+import { Tunnel } from '@/api/tunnels'
 import { ConnectionCard } from './ConnectionCard'
 
 interface ConnectionListProps {
   connections: Connection[]
   groups: Group[]
+  tunnels?: Tunnel[]
   activeConnIds: Record<string, string>
   selectedGroupId: string | null
   vaultLocked?: boolean
@@ -49,6 +51,7 @@ function groupBySection(
 function ConnectionGrid({
   items,
   groups,
+  tunnels = [],
   activeConnIds,
   vaultLocked,
   onConnect,
@@ -69,6 +72,7 @@ function ConnectionGrid({
             connection={conn}
             group={group}
             groups={groups}
+            tunnels={tunnels}
             isActive={isActive}
             vaultLocked={vaultLocked}
             onConnect={() => onConnect(conn.id)}
@@ -86,6 +90,7 @@ function ConnectionGrid({
 export function ConnectionList({
   connections,
   groups,
+  tunnels = [],
   activeConnIds,
   selectedGroupId,
   vaultLocked = false,
@@ -120,6 +125,7 @@ export function ConnectionList({
       <ConnectionGrid
         items={filtered}
         groups={groups}
+        tunnels={tunnels}
         activeConnIds={activeConnIds}
         vaultLocked={vaultLocked}
         onConnect={onConnect}
@@ -157,6 +163,7 @@ export function ConnectionList({
           <ConnectionGrid
             items={section.items}
             groups={groups}
+            tunnels={tunnels}
             activeConnIds={activeConnIds}
             vaultLocked={vaultLocked}
             onConnect={onConnect}

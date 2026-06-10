@@ -14,7 +14,8 @@ import { collectFromFileList } from '@/lib/localFiles'
 
 export function FileManagerPage() {
   const { connections, activeConnIds, fetch } = useConnectionStore()
-  const { connId, currentPath, entries, setConnId, navigate, refresh } = useFileStore()
+  const { connId, currentPath, entries, error: fileError, setConnId, navigate, refresh, clearError } =
+    useFileStore()
   const { enqueue, enqueueTree } = useUploadQueue()
   const queue = useUploadQueue((s) => s.queue)
   const clearCompleted = useUploadQueue((s) => s.clearCompleted)
@@ -148,6 +149,21 @@ export function FileManagerPage() {
 
   return (
     <div className="flex flex-col h-full">
+      {fileError && (
+        <div
+          className="border-b border-term-red/40 bg-term-red/10 px-4 py-3 font-mono text-xs text-term-red flex items-center justify-between gap-3"
+          role="alert"
+        >
+          <span>{fileError}</span>
+          <button
+            type="button"
+            onClick={clearError}
+            className="text-text-muted hover:text-[var(--text-primary)] shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="flex items-center gap-3 p-4 border-b border-[var(--border-default)] bg-surface">
         <select
           className="bg-elevated border border-[var(--border-default)] rounded-brutal px-3 py-2 font-mono text-xs text-purple-bright"

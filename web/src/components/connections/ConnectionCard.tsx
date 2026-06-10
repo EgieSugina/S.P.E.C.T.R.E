@@ -1,13 +1,16 @@
 import { Connection, Group } from '@/api/connections'
+import { Tunnel } from '@/api/tunnels'
+import { proxyLabel } from '@/components/connections/ProxySelector'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { clsx } from 'clsx'
-import { FolderInput, Terminal, Trash2, Wifi } from 'lucide-react'
+import { FolderInput, RefreshCw, Terminal, Trash2, Wifi } from 'lucide-react'
 
 interface ConnectionCardProps {
   connection: Connection
   group?: Group
   groups: Group[]
+  tunnels?: Tunnel[]
   isActive: boolean
   vaultLocked?: boolean
   onConnect: () => void
@@ -21,6 +24,7 @@ export function ConnectionCard({
   connection,
   group,
   groups,
+  tunnels = [],
   isActive,
   vaultLocked = false,
   onConnect,
@@ -29,6 +33,8 @@ export function ConnectionCard({
   onTerminal,
   onAssignGroup,
 }: ConnectionCardProps) {
+  const viaProxy = proxyLabel(connection, tunnels)
+
   return (
     <div
       className={clsx(
@@ -45,6 +51,12 @@ export function ConnectionCard({
           <p className="font-mono text-xs text-term-cyan mt-1">
             {connection.username}@{connection.host}:{connection.port}
           </p>
+          {viaProxy && (
+            <p className="font-mono text-[10px] text-purple-bright mt-1 inline-flex items-center gap-1">
+              <RefreshCw size={10} />
+              {viaProxy}
+            </p>
+          )}
           {group && (
             <span
               className="inline-flex items-center gap-1 mt-1.5 font-mono text-[10px] px-1.5 py-0.5 rounded-brutal border border-[var(--border-default)]"

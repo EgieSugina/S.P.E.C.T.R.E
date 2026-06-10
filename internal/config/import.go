@@ -68,6 +68,10 @@ func ImportJSON(db *store.DB, data []byte, masterPassword string, salt []byte) (
 			existing.GroupID = conn.GroupID
 			existing.Tags = conn.Tags
 			existing.Notes = conn.Notes
+			existing.ProxyTunnelID = conn.ProxyTunnelID
+			existing.ProxyType = conn.ProxyType
+			existing.ProxyHost = conn.ProxyHost
+			existing.ProxyPort = conn.ProxyPort
 			if err := db.UpdateConnection(existing); err != nil {
 				return count, err
 			}

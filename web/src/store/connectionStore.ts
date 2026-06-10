@@ -1,18 +1,26 @@
 import { create } from 'zustand'
 import { Connection, connectionsApi } from '@/api/connections'
-import { ApiError } from '@/api/client'
+import { formatConnectionError } from '@/lib/connectionErrors'
+
+export interface ConnectionLostNotice {
+  accountId: string
+  reason: string
+}
 
 interface ConnectionStore {
   connections: Connection[]
   activeConnIds: Record<string, string>
   loading: boolean
   error: string | null
+  lostNotice: ConnectionLostNotice | null
   fetch: () => Promise<void>
   connect: (id: string) => Promise<string>
   disconnect: (id: string) => Promise<void>
   remove: (id: string) => Promise<void>
   assignGroup: (id: string, groupId: string | null) => Promise<void>
+  markConnectionLost: (accountId: string, reason?: string) => void
   clearError: () => void
+  clearLostNotice: () => void
 }
 
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
@@ -20,6 +28,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   activeConnIds: {},
   loading: false,
   error: null,
+  lostNotice: null,
 
   fetch: async () => {
     set({ loading: true, error: null })
@@ -41,9 +50,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       })
       return result.conn_id
     } catch (e) {
-      const msg =
-        e instanceof ApiError ? `[${e.code}] ${e.message}` : (e as Error).message
-      set({ error: msg })
+      set({ error: formatConnectionError(e) })
       throw e
     }
   },
@@ -67,5 +74,18 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     await get().fetch()
   },
 
+  markConnectionLost: (accountId, reason) => {
+    const next = { ...get().activeConnIds }
+    delete next[accountId]
+    const userInitiated = reason === 'user_disconnect'
+    set({
+      activeConnIds: next,
+      lostNotice: userInitiated
+        ? get().lostNotice
+        : { accountId, reason: reason || 'connection lost' },
+    })
+  },
+
   clearError: () => set({ error: null }),
+  clearLostNotice: () => set({ lostNotice: null }),
 }))

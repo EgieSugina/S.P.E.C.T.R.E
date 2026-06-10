@@ -13,6 +13,10 @@ export interface Connection {
   tags?: string
   notes?: string
   keep_alive_interval: number
+  proxy_tunnel_id?: string | null
+  proxy_type?: string
+  proxy_host?: string
+  proxy_port?: number
   created_at: string
   last_connected_at?: string
 }

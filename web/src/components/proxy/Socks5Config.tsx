@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Input } from '@/components/shared/Input'
 import { Button } from '@/components/shared/Button'
 import { Connection } from '@/api/connections'
+import { Tunnel } from '@/api/tunnels'
 import { ApiError } from '@/api/client'
 
 interface Socks5ConfigProps {
   connections: Connection[]
+  existingTunnels?: Tunnel[]
   onSubmit: (data: {
     name: string
     connection_id: string
@@ -14,10 +16,32 @@ interface Socks5ConfigProps {
   onCancel: () => void
 }
 
-export function Socks5Config({ connections, onSubmit, onCancel }: Socks5ConfigProps) {
+const SOCKS_TYPES = new Set(['socks5', 'dynamic'])
+
+export function nextSocksPort(tunnels: Tunnel[], host = '127.0.0.1'): number {
+  const used = new Set(
+    tunnels
+      .filter((t) => SOCKS_TYPES.has(t.type) && (t.local_host || '127.0.0.1') === host)
+      .map((t) => t.local_port),
+  )
+  let port = 1080
+  while (used.has(port)) port++
+  return port
+}
+
+export function Socks5Config({
+  connections,
+  existingTunnels = [],
+  onSubmit,
+  onCancel,
+}: Socks5ConfigProps) {
+  const suggestedPort = useMemo(
+    () => nextSocksPort(existingTunnels),
+    [existingTunnels],
+  )
   const [name, setName] = useState('')
   const [connectionId, setConnectionId] = useState(connections[0]?.id ?? '')
-  const [localPort, setLocalPort] = useState('1080')
+  const [localPort, setLocalPort] = useState(String(suggestedPort))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

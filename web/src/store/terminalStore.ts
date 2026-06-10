@@ -13,6 +13,7 @@ interface TerminalStore {
   tabs: TerminalTab[]
   activeTabId: string | null
   addTab: (connectionId: string, connId: string, name: string) => Promise<void>
+  updateTabSession: (tabId: string, sessionId: string, connId: string) => void
   removeTab: (id: string) => void
   setActive: (id: string) => void
 }
@@ -33,6 +34,14 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     set({
       tabs: [...get().tabs, tab],
       activeTabId: tab.id,
+    })
+  },
+
+  updateTabSession: (tabId, sessionId, connId) => {
+    set({
+      tabs: get().tabs.map((t) =>
+        t.id === tabId ? { ...t, sessionId, connId } : t,
+      ),
     })
   },
 

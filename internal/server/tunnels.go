@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -9,6 +10,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"spectre/internal/store"
+	"spectre/internal/tunnel"
 )
 
 func (s *Server) handleListTunnels(w http.ResponseWriter, r *http.Request) {
@@ -123,6 +125,10 @@ func (s *Server) handleStartTunnel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.tunnelMgr.Start(t); err != nil {
+		if errors.Is(err, tunnel.ErrPortBusy) {
+			writeError(w, http.StatusConflict, "TUNNEL_PORT_BUSY", err.Error())
+			return
+		}
 		writeError(w, http.StatusBadGateway, "TUNNEL_START_FAILED", err.Error())
 		return
 	}

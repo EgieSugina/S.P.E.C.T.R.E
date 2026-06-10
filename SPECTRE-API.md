@@ -35,9 +35,25 @@ All requests require header: `X-SPECTRE-Token: <token>`
   "group_id": "optional-uuid",
   "tags": ["prod"],
   "notes": "",
-  "keep_alive_interval": 30
+  "keep_alive_interval": 30,
+  "proxy_tunnel_id": "optional-tunnel-uuid",
+  "proxy_type": "socks5",
+  "proxy_host": "127.0.0.1",
+  "proxy_port": 1080
 }
 ```
+
+**Proxy fields (optional):** SSH connections can route through a SOCKS5 proxy.
+
+| Field | Description |
+|---|---|
+| `proxy_tunnel_id` | Reference a running SPECTRE SOCKS5/dynamic tunnel (preferred) |
+| `proxy_host` / `proxy_port` | External SOCKS5 endpoint when not using a tunnel |
+| `proxy_type` | `socks5` (default for manual proxy; only type supported for SSH dial today) |
+
+Use either `proxy_tunnel_id` **or** `proxy_host`+`proxy_port`, not both. The referenced tunnel must be **running** before connect. Terminal and SFTP reuse the same SSH dial path.
+
+Connect errors involving the proxy return code `PROXY_FAILED`.
 
 ---
 
@@ -259,6 +275,9 @@ ws://localhost:57321/ws/system
 **Error Codes:**
 - `AUTH_FAILED` — SSH authentication failed
 - `HOST_UNREACHABLE` — Cannot connect to host
+- `PROXY_FAILED` — SOCKS5/proxy dial failed (SSH-over-proxy)
+- `TIMEOUT` — SSH dial timed out
+- `CONNECTION_LOST` — Active SSH session dropped (SFTP/terminal)
 - `SFTP_PERMISSION` — SFTP permission denied
 - `TUNNEL_PORT_BUSY` — Local port already in use
 - `VAULT_LOCKED` — Master password required

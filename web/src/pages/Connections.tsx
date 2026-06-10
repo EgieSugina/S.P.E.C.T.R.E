@@ -10,12 +10,15 @@ import { GroupSidebar } from '@/components/connections/GroupSidebar'
 import { AddConnectionModal } from '@/components/connections/AddConnectionModal'
 import { HostKeyTrustModal, parseHostKeyMismatch } from '@/components/connections/HostKeyTrustModal'
 import { HostKeyMismatchDetails } from '@/api/knownHosts'
+import { Tunnel, tunnelsApi } from '@/api/tunnels'
 import { Button } from '@/components/shared/Button'
+import { formatDisconnectReason } from '@/lib/connectionErrors'
 
 export function Connections() {
   const navigate = useNavigate()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [tunnels, setTunnels] = useState<Tunnel[]>([])
   const [hostKeyPrompt, setHostKeyPrompt] = useState<{
     connectionId: string
     details: HostKeyMismatchDetails
@@ -30,6 +33,8 @@ export function Connections() {
     remove,
     assignGroup,
     clearError,
+    lostNotice,
+    clearLostNotice,
   } = useConnectionStore()
   const { groups, fetch: fetchGroups } = useGroupStore()
   const { vaultLocked, vaultConfigured, fetch: fetchSettings, openVaultModal } = useSettingsStore()
@@ -39,6 +44,7 @@ export function Connections() {
     fetch()
     fetchGroups()
     fetchSettings()
+    tunnelsApi.list().then(setTunnels).catch(() => setTunnels([]))
   }, [fetch, fetchGroups, fetchSettings])
 
   const { counts, ungroupedCount } = useMemo(() => {
@@ -105,6 +111,24 @@ export function Connections() {
             : 'Vault not configured. Connect or save a connection to set up your master password.'}
         </div>
       )}
+      {lostNotice && (
+        <div
+          className="mb-4 border border-amber-500/40 bg-amber-500/10 rounded-brutal px-4 py-3 font-mono text-xs text-amber-200 flex items-center justify-between gap-3"
+          role="status"
+        >
+          <span>
+            {connections.find((c) => c.id === lostNotice.accountId)?.name ?? 'Connection'}{' '}
+            — {formatDisconnectReason(lostNotice.reason)}
+          </span>
+          <button
+            type="button"
+            onClick={clearLostNotice}
+            className="text-text-muted hover:text-[var(--text-primary)] shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {error && (
         <div
           className="mb-4 border border-term-red/40 bg-term-red/10 rounded-brutal px-4 py-3 font-mono text-xs text-term-red"
@@ -125,6 +149,7 @@ export function Connections() {
           <ConnectionList
             connections={connections}
             groups={groups}
+            tunnels={tunnels}
             activeConnIds={activeConnIds}
             selectedGroupId={selectedGroupId}
             vaultLocked={vaultLocked}

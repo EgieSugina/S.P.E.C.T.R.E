@@ -3,6 +3,13 @@ import { Modal } from '@/components/shared/Modal'
 import { Input } from '@/components/shared/Input'
 import { Button } from '@/components/shared/Button'
 import { connectionsApi } from '@/api/connections'
+import { tunnelsApi } from '@/api/tunnels'
+import { Tunnel } from '@/api/tunnels'
+import {
+  ProxyFormValue,
+  ProxySelector,
+  proxyPayloadFromForm,
+} from '@/components/connections/ProxySelector'
 import { useSettingsStore } from '@/store/settingsStore'
 import { useKeyStore } from '@/store/keyStore'
 import { useGroupStore } from '@/store/groupStore'
@@ -29,6 +36,13 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
     group_id: '',
     notes: '',
   })
+  const [proxy, setProxy] = useState<ProxyFormValue>({
+    mode: 'none',
+    proxy_tunnel_id: '',
+    proxy_host: '',
+    proxy_port: 1080,
+  })
+  const [tunnels, setTunnels] = useState<Tunnel[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -37,6 +51,7 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
       fetchSettings()
       fetchKeys()
       fetchGroups()
+      tunnelsApi.list().then(setTunnels).catch(() => setTunnels([]))
     }
   }, [open, fetchSettings, fetchKeys, fetchGroups])
 
@@ -57,11 +72,20 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
       setError('Password is required')
       return
     }
+    if (proxy.mode === 'tunnel' && !proxy.proxy_tunnel_id) {
+      setError('Select a proxy tunnel')
+      return
+    }
+    if (proxy.mode === 'manual' && (!proxy.proxy_host || proxy.proxy_port <= 0)) {
+      setError('Proxy host and port are required')
+      return
+    }
     setLoading(true)
     setError('')
     try {
       await connectionsApi.create({
         ...form,
+        ...proxyPayloadFromForm(proxy),
         private_key_id: usesKey ? form.private_key_id : undefined,
         password: usesKey ? undefined : form.password,
         group_id: form.group_id || undefined,
@@ -79,6 +103,7 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
         group_id: '',
         notes: '',
       })
+      setProxy({ mode: 'none', proxy_tunnel_id: '', proxy_host: '', proxy_port: 1080 })
     } catch (err) {
       if (err instanceof ApiError) {
         setError(`[${err.code}] ${err.message}`)
@@ -163,6 +188,7 @@ export function AddConnectionModal({ open, onClose, onCreated }: AddConnectionMo
             />
           </div>
         )}
+        <ProxySelector value={proxy} onChange={setProxy} tunnels={tunnels} />
         <div>
           <label className="font-mono text-[10px] text-text-muted uppercase">Group</label>
           <select

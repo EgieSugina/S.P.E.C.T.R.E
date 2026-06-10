@@ -338,7 +338,9 @@ export function ProxyManager() {
           </p>
         ) : (
           <Socks5Config
+            key={socks5Tunnels.map((t) => `${t.id}:${t.local_port}`).join('|') || 'new'}
             connections={connections}
+            existingTunnels={tunnels}
             onSubmit={handleCreateSocks5}
             onCancel={() => setSocksModal(false)}
           />

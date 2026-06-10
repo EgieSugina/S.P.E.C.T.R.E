@@ -164,13 +164,19 @@ func (s *TerminalSession) writeToClient(data []byte) {
 
 func (s *TerminalSession) notifyDisconnected(reason string) {
 	s.wsMu.Lock()
-	defer s.wsMu.Unlock()
-	if s.wsConn != nil {
-		_ = s.wsConn.WriteJSON(map[string]interface{}{
-			"type":   "disconnected",
-			"reason": reason,
-		})
+	ws := s.wsConn
+	s.wsMu.Unlock()
+	if ws == nil {
+		return
 	}
+	_ = ws.WriteJSON(map[string]interface{}{
+		"type":   "disconnected",
+		"reason": reason,
+	})
+	_ = ws.WriteMessage(
+		websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseGoingAway, reason),
+	)
 }
 
 func (s *TerminalSession) HandleMessage(msg []byte) error {
