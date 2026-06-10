@@ -244,6 +244,26 @@ ws://localhost:57321/ws/sftp/:conn_id
 
 ---
 
+### Tunnel Events
+
+```
+ws://localhost:57321/ws/tunnels
+```
+
+Dedicated tunnel channel for status and live stats. On connect, server sends a `tunnel_snapshot`. Running tunnels emit `tunnel_stats` every ~2.5s.
+
+```json
+{ "type": "tunnel_snapshot", "tunnels": [{ "id": "uuid", "status": "running", "local_port": 1080, ... }] }
+{ "type": "tunnel_started",  "tunnel_id": "uuid", "port": 1080, "status": "running" }
+{ "type": "tunnel_stopped",  "tunnel_id": "uuid", "status": "stopped" }
+{ "type": "tunnel_error",    "tunnel_id": "uuid", "status": "error", "error": "local port already in use" }
+{ "type": "tunnel_stats",    "tunnel_id": "uuid", "stats": { "active_connections": 2, "total_connections": 5, "bind_addr": "127.0.0.1:1080" } }
+```
+
+`tunnel_started` / `tunnel_stopped` are also mirrored on `/ws/system`.
+
+---
+
 ### System Events
 
 ```
@@ -257,6 +277,17 @@ ws://localhost:57321/ws/system
 { "type": "tunnel_stopped",   "tunnel_id": "uuid" }
 { "type": "session_created",  "session_id": "uuid" }
 { "type": "session_destroyed","session_id": "uuid" }
+```
+
+**Phase 3 push notifications** (broadcast commands, jump host — REST endpoints unchanged):
+
+```json
+{ "type": "broadcast_started",   "batch_id": "uuid", "session_ids": ["..."], "command": "uptime" }
+{ "type": "broadcast_completed", "batch_id": "uuid", "session_ids": ["..."], "succeeded": 3, "failed": 0 }
+{ "type": "broadcast_failed",    "batch_id": "uuid", "session_id": "uuid", "error": "session closed" }
+{ "type": "jump_connecting",     "connection_id": "uuid", "jump_host_id": "uuid", "target_host": "10.0.0.5" }
+{ "type": "jump_connected",      "connection_id": "uuid", "jump_host_id": "uuid", "hop_count": 2 }
+{ "type": "jump_failed",         "connection_id": "uuid", "jump_host_id": "uuid", "reason": "auth failed" }
 ```
 
 ---

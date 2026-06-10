@@ -31,7 +31,6 @@ export function ProxyManager() {
     remove,
     start,
     stop,
-    fetchStats,
     clearError,
   } = useTunnelStore()
   const { connections, fetch: fetchConnections } = useConnectionStore()
@@ -56,11 +55,8 @@ export function ProxyManager() {
       const firstSocks = running.find((t) => t.type === 'socks5' || t.type === 'dynamic')
       setSelectedId(firstSocks?.id ?? running[0].id)
     }
-    const poll = () => running.forEach((t) => fetchStats(t.id))
-    poll()
-    const id = setInterval(poll, 2500)
-    return () => clearInterval(id)
-  }, [tunnels, fetchStats, selectedId])
+    // Live stats arrive via /ws/tunnels; REST fetchStats remains for manual refresh after actions.
+  }, [tunnels, selectedId])
 
   const socks5Tunnels = tunnels.filter((t) => t.type === 'socks5' || t.type === 'dynamic')
   const connName = (id: string) => connections.find((c) => c.id === id)?.name ?? id.slice(0, 8)

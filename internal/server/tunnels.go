@@ -125,10 +125,13 @@ func (s *Server) handleStartTunnel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.tunnelMgr.Start(t); err != nil {
+		s.tunnelMgr.Enrich(t)
 		if errors.Is(err, tunnel.ErrPortBusy) {
+			s.emitTunnelLifecycle(t, "tunnel_error")
 			writeError(w, http.StatusConflict, "TUNNEL_PORT_BUSY", err.Error())
 			return
 		}
+		s.emitTunnelLifecycle(t, "tunnel_error")
 		writeError(w, http.StatusBadGateway, "TUNNEL_START_FAILED", err.Error())
 		return
 	}
@@ -138,6 +141,7 @@ func (s *Server) handleStartTunnel(w http.ResponseWriter, r *http.Request) {
 		"tunnel_id": t.ID,
 		"port":      t.LocalPort,
 	})
+	s.emitTunnelLifecycle(t, "tunnel_started")
 	writeJSON(w, http.StatusOK, t)
 }
 
@@ -157,6 +161,7 @@ func (s *Server) handleStopTunnel(w http.ResponseWriter, r *http.Request) {
 		"type":      "tunnel_stopped",
 		"tunnel_id": t.ID,
 	})
+	s.emitTunnelLifecycle(t, "tunnel_stopped")
 	writeJSON(w, http.StatusOK, t)
 }
 

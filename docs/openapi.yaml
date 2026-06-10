@@ -1,0 +1,1322 @@
+openapi: 3.1.0
+info:
+  title: S.P.E.C.T.R.E API
+  description: |
+    REST API for S.P.E.C.T.R.E — Secure Proxy & Encrypted Connection Tunneling Remote Environment.
+    Real-time features (terminal, SFTP progress, tunnels, system events) use WebSocket endpoints documented in SPECTRE-API.md.
+  version: 1.0.0
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://127.0.0.1:57321/api
+    description: Default local daemon
+
+tags:
+  - name: auth
+  - name: connections
+  - name: groups
+  - name: known-hosts
+  - name: keys
+  - name: sessions
+  - name: sftp
+  - name: tunnels
+  - name: trace
+  - name: settings
+  - name: vault
+  - name: system
+
+components:
+  securitySchemes:
+    SpectreToken:
+      type: apiKey
+      in: header
+      name: X-SPECTRE-Token
+      description: Session token from GET /api/auth/token
+
+  schemas:
+    Error:
+      type: object
+      required: [error, code, message]
+      properties:
+        error:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: AUTH_FAILED
+        message:
+          type: string
+        detail:
+          type: string
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+
+    Connection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        group_id:
+          type: string
+          format: uuid
+          nullable: true
+        host:
+          type: string
+        port:
+          type: integer
+          default: 22
+        username:
+          type: string
+        auth_type:
+          type: string
+          enum: [password, key, key+passphrase]
+        private_key_id:
+          type: string
+          format: uuid
+          nullable: true
+        tags:
+          type: string
+        notes:
+          type: string
+        keep_alive_interval:
+          type: integer
+        proxy_tunnel_id:
+          type: string
+          format: uuid
+          nullable: true
+        proxy_type:
+          type: string
+        proxy_host:
+          type: string
+        proxy_port:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        last_connected_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ConnectionInput:
+      type: object
+      required: [name, host, username, auth_type]
+      properties:
+        name:
+          type: string
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        auth_type:
+          type: string
+        password:
+          type: string
+        private_key_id:
+          type: string
+        passphrase:
+          type: string
+        group_id:
+          type: string
+        tags:
+          type: string
+        notes:
+          type: string
+        keep_alive_interval:
+          type: integer
+        proxy_tunnel_id:
+          type: string
+        proxy_type:
+          type: string
+        proxy_host:
+          type: string
+        proxy_port:
+          type: integer
+
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+        sort_order:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    KnownHost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        host:
+          type: string
+        port:
+          type: integer
+        key_type:
+          type: string
+        fingerprint:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    SSHKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [ed25519, rsa, ecdsa]
+        public_key:
+          type: string
+        fingerprint:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conn_id:
+          type: string
+          format: uuid
+
+    Tunnel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        connection_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [socks5, local, remote, dynamic]
+        local_host:
+          type: string
+        local_port:
+          type: integer
+        remote_host:
+          type: string
+        remote_port:
+          type: integer
+        auto_start:
+          type: boolean
+        status:
+          type: string
+          enum: [running, stopped, error]
+        error_message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    TunnelStats:
+      type: object
+      properties:
+        active_connections:
+          type: integer
+        total_connections:
+          type: integer
+        bind_addr:
+          type: string
+
+    TraceHop:
+      type: object
+      properties:
+        hop:
+          type: integer
+        host:
+          type: string
+        ip:
+          type: string
+        rtt_ms:
+          type: number
+        status:
+          type: string
+          enum: [local, gateway, alive, timeout, target]
+
+    TraceResult:
+      type: object
+      properties:
+        target:
+          type: string
+        resolved_ip:
+          type: string
+        hops:
+          type: array
+          items:
+            $ref: '#/components/schemas/TraceHop'
+        via:
+          type: string
+        tool:
+          type: string
+        duration_ms:
+          type: integer
+        error:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Invalid or missing X-SPECTRE-Token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /auth/token:
+    get:
+      tags: [auth]
+      summary: Get session token
+      operationId: getAuthToken
+      responses:
+        '200':
+          description: Session token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+
+  /auth/session:
+    get:
+      tags: [auth]
+      summary: Get session token (alias)
+      operationId: getAuthSession
+      responses:
+        '200':
+          description: Session token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+
+  /connections:
+    get:
+      tags: [connections]
+      summary: List connections
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          description: Connection list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Connection'
+    post:
+      tags: [connections]
+      summary: Create connection
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectionInput'
+      responses:
+        '201':
+          description: Created connection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+
+  /connections/import:
+    post:
+      tags: [connections]
+      summary: Import connections from JSON/YAML
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: X-SPECTRE-Master
+          in: header
+          schema:
+            type: string
+          description: Master password for decrypting imported secrets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Import count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported:
+                    type: integer
+
+  /connections/export:
+    get:
+      tags: [connections]
+      summary: Export connections
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [spectre, json, yaml]
+            default: json
+        - name: X-SPECTRE-Master
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exported file
+
+  /connections/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [connections]
+      summary: Get connection
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [connections]
+      summary: Update connection
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectionInput'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+    delete:
+      tags: [connections]
+      summary: Delete connection
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /connections/{id}/connect:
+    post:
+      tags: [connections]
+      summary: Open SSH connection
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Connected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conn_id:
+                    type: string
+                  status:
+                    type: string
+
+  /connections/{id}/disconnect:
+    post:
+      tags: [connections]
+      summary: Close SSH connection
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /connections/{id}/status:
+    get:
+      tags: [connections]
+      summary: Connection health
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  conn_id:
+                    type: string
+                  since:
+                    type: string
+                    format: date-time
+
+  /connections/{id}/trace:
+    post:
+      tags: [trace]
+      summary: Trace route via SSH connection
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                host:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceResult'
+
+  /trace:
+    get:
+      tags: [trace]
+      summary: Trace route from local host
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: host
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceResult'
+
+  /groups:
+    get:
+      tags: [groups]
+      summary: List groups
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Group'
+    post:
+      tags: [groups]
+      summary: Create group
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+
+  /groups/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags: [groups]
+      summary: Update group
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+    delete:
+      tags: [groups]
+      summary: Delete group
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /known-hosts:
+    get:
+      tags: [known-hosts]
+      summary: List trusted host keys
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/KnownHost'
+
+  /known-hosts/trust:
+    post:
+      tags: [known-hosts]
+      summary: Trust a host key
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [host, fingerprint, key_data]
+              properties:
+                host:
+                  type: string
+                port:
+                  type: integer
+                key_type:
+                  type: string
+                fingerprint:
+                  type: string
+                key_data:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /known-hosts/{id}:
+    delete:
+      tags: [known-hosts]
+      summary: Remove trusted host key
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /keys:
+    get:
+      tags: [keys]
+      summary: List SSH keys
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SSHKey'
+
+  /keys/generate:
+    post:
+      tags: [keys]
+      summary: Generate keypair
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type]
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum: [ed25519, rsa, ecdsa]
+                passphrase:
+                  type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SSHKey'
+
+  /keys/import:
+    post:
+      tags: [keys]
+      summary: Import PEM private key
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                passphrase:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SSHKey'
+
+  /keys/{id}/public:
+    get:
+      tags: [keys]
+      summary: Download public key
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Public key file
+
+  /keys/{id}:
+    delete:
+      tags: [keys]
+      summary: Delete key
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /sessions:
+    get:
+      tags: [sessions]
+      summary: List active sessions
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+    post:
+      tags: [sessions]
+      summary: Create terminal session
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conn_id]
+              properties:
+                conn_id:
+                  type: string
+                cols:
+                  type: integer
+                rows:
+                  type: integer
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  conn_id:
+                    type: string
+
+  /sessions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [sessions]
+      summary: Get session
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+    delete:
+      tags: [sessions]
+      summary: Kill session
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /sftp/{connID}/list:
+    get:
+      tags: [sftp]
+      summary: List directory
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: connID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          schema:
+            type: string
+            default: /
+      responses:
+        '200':
+          description: Directory listing
+
+  /sftp/{connID}/stat:
+    get:
+      tags: [sftp]
+      summary: File metadata
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: connID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File stat
+
+  /sftp/{connID}/upload:
+    post:
+      tags: [sftp]
+      summary: Upload file
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: connID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload job started
+
+  /sftp/{connID}/download:
+    get:
+      tags: [sftp]
+      summary: Download file
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: connID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+
+  /sftp/{connID}/mkdir:
+    post:
+      tags: [sftp]
+      summary: Create directory
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: connID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /sftp/{connID}/delete:
+    delete:
+      tags: [sftp]
+      summary: Delete file or directory
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: connID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /sftp/{connID}/rename:
+    post:
+      tags: [sftp]
+      summary: Rename file or directory
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: connID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from:
+                  type: string
+                to:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /tunnels:
+    get:
+      tags: [tunnels]
+      summary: List tunnels
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tunnel'
+    post:
+      tags: [tunnels]
+      summary: Create tunnel
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tunnel'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tunnel'
+
+  /tunnels/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [tunnels]
+      summary: Get tunnel
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tunnel'
+    put:
+      tags: [tunnels]
+      summary: Update tunnel
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tunnel'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tunnel'
+    delete:
+      tags: [tunnels]
+      summary: Delete tunnel
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /tunnels/{id}/start:
+    post:
+      tags: [tunnels]
+      summary: Start tunnel
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tunnel'
+
+  /tunnels/{id}/stop:
+    post:
+      tags: [tunnels]
+      summary: Stop tunnel
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tunnel'
+
+  /tunnels/{id}/stats:
+    get:
+      tags: [tunnels]
+      summary: Live tunnel stats
+      security: [{ SpectreToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TunnelStats'
+
+  /settings:
+    get:
+      tags: [settings]
+      summary: Get all settings
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+    put:
+      tags: [settings]
+      summary: Update settings
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /vault/unlock:
+    post:
+      tags: [vault]
+      summary: Unlock vault
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unlocked:
+                    type: boolean
+
+  /vault/lock:
+    post:
+      tags: [vault]
+      summary: Lock vault
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  locked:
+                    type: boolean
+
+  /vault/status:
+    get:
+      tags: [vault]
+      summary: Vault status
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  locked:
+                    type: boolean
+                  configured:
+                    type: boolean
+
+  /vault/setup:
+    post:
+      tags: [vault]
+      summary: Initial vault setup
+      security: [{ SpectreToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured:
+                    type: boolean
+
+  /system/status:
+    get:
+      tags: [system]
+      summary: Daemon status
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                  connections:
+                    type: integer
+                  sessions:
+                    type: integer
+                  uptime:
+                    type: string
+                    format: date-time
+
+  /system/version:
+    get:
+      tags: [system]
+      summary: Version string
+      security: [{ SpectreToken: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string

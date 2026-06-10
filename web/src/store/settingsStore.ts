@@ -2,6 +2,16 @@ import { create } from 'zustand'
 import { api } from '@/api/client'
 import { vaultApi } from '@/api/connections'
 import { applyTheme, resolveTheme } from '@/lib/theme'
+import { useUploadQueue } from '@/hooks/useUploadQueue'
+
+function syncUploadMaxConcurrent(settings: Record<string, string>) {
+  const raw = settings.upload_max_concurrent
+  if (raw == null || raw === '') return
+  const n = parseInt(raw, 10)
+  if (!Number.isNaN(n)) {
+    useUploadQueue.getState().setMaxConcurrent(n)
+  }
+}
 
 interface SettingsStore {
   settings: Record<string, string>
@@ -33,11 +43,16 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       vaultConfigured: vault.configured,
     })
     applyTheme(resolveTheme(settings.theme))
+    syncUploadMaxConcurrent(settings)
   },
 
   update: async (data) => {
     await api('/settings', { method: 'PUT', body: JSON.stringify(data) })
-    set((s) => ({ settings: { ...s.settings, ...data } }))
+    set((s) => {
+      const settings = { ...s.settings, ...data }
+      syncUploadMaxConcurrent(settings)
+      return { settings }
+    })
     if (data.theme) applyTheme(resolveTheme(data.theme))
   },
 

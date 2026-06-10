@@ -239,3 +239,15 @@ func (m *Manager) Enrich(t *store.Tunnel) {
 		t.ErrorMessage = errMsg
 	}
 }
+
+func (m *Manager) RunningIDs() []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	ids := make([]string, 0, len(m.running))
+	for id, rt := range m.running {
+		if rt.status == StatusRunning {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}

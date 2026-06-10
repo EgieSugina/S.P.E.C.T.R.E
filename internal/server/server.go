@@ -45,9 +45,10 @@ type Server struct {
 	sftpMgr   *sftp.Manager
 	tunnelMgr *tunnel.Manager
 	uploadQ   *sftp.UploadQueue
-	sftpHub   *sftpWSHub
-	systemHub *systemWSHub
-	httpSrv   *http.Server
+	sftpHub    *sftpWSHub
+	systemHub  *systemWSHub
+	tunnelsHub *tunnelsWSHub
+	httpSrv    *http.Server
 }
 
 func New(bind string, port int, configDir string) (*Server, error) {
@@ -79,8 +80,9 @@ func New(bind string, port int, configDir string) (*Server, error) {
 		sshMgr:    ssh.NewManager(),
 		sftpMgr:   sftp.NewManager(),
 		uploadQ:   sftp.NewUploadQueue(maxConc),
-		sftpHub:   newSFTPWSHub(),
-		systemHub: newSystemWSHub(),
+		sftpHub:    newSFTPWSHub(),
+		systemHub:  newSystemWSHub(),
+		tunnelsHub: newTunnelsWSHub(),
 	}
 	srv.sshMgr.SetHostKeyCallback(ssh.NewHostKeyCallback(db))
 	srv.sshMgr.SetConnectionLostHandler(func(accountID, connID, reason string) {
@@ -191,9 +193,11 @@ func (s *Server) Start(ctx context.Context) error {
 
 	r.Get("/ws/terminal/{sessionID}", s.handleTerminalWS)
 	r.Get("/ws/sftp/{connID}", s.handleSFTPWS)
+	r.Get("/ws/tunnels", s.handleTunnelsWS)
 	r.Get("/ws/system", s.handleSystemWS)
 
 	go s.runUploadProgressBroadcast()
+	go s.runTunnelStatsBroadcast()
 
 	r.Handle("/*", ServeFrontend())
 
@@ -840,6 +844,11 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		if err := s.db.SetSetting(k, v); err != nil {
 			writeError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 			return
+		}
+	}
+	if v, ok := settings["upload_max_concurrent"]; ok {
+		if n, err := strconv.Atoi(v); err == nil {
+			s.uploadQ.SetMaxConcurrent(n)
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

@@ -17,6 +17,7 @@ interface UploadQueueStore {
   maxConcurrent: number
   queue: UploadItem[]
   activeCount: number
+  lastConnId: string
   setMaxConcurrent: (n: number) => void
   enqueue: (connId: string, file: File, remotePath: string) => void
   enqueueTree: (
@@ -34,10 +35,23 @@ export const useUploadQueue = create<UploadQueueStore>((set, get) => ({
   maxConcurrent: 3,
   queue: [],
   activeCount: 0,
+  lastConnId: '',
 
-  setMaxConcurrent: (n) => set({ maxConcurrent: Math.min(10, Math.max(1, n)) }),
+  setMaxConcurrent: (n) => {
+    const maxConcurrent = Math.min(10, Math.max(1, n))
+    set({ maxConcurrent })
+    const { lastConnId, queue, activeCount } = get()
+    if (!lastConnId) return
+    const pending = queue.filter((q) => q.status === 'pending').length
+    const slots = maxConcurrent - activeCount
+    const toStart = Math.min(slots, pending)
+    for (let i = 0; i < toStart; i++) {
+      get().processQueue(lastConnId)
+    }
+  },
 
   enqueue: (connId, file, remotePath) => {
+    set({ lastConnId: connId })
     const item: UploadItem = {
       id: crypto.randomUUID(),
       file,
@@ -52,6 +66,7 @@ export const useUploadQueue = create<UploadQueueStore>((set, get) => ({
   },
 
   enqueueTree: async (connId, baseRemotePath, files, emptyDirs = []) => {
+    set({ lastConnId: connId })
     const sortedDirs = [...emptyDirs].sort(
       (a, b) => a.split('/').length - b.split('/').length
     )

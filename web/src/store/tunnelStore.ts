@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { Tunnel, TunnelStats, tunnelsApi } from '@/api/tunnels'
 import { ApiError } from '@/api/client'
+import type { TunnelEvent } from '@/types/tunnelEvents'
 
 interface TunnelStore {
   tunnels: Tunnel[]
@@ -13,6 +14,7 @@ interface TunnelStore {
   start: (id: string) => Promise<void>
   stop: (id: string) => Promise<void>
   fetchStats: (id: string) => Promise<void>
+  handleWsEvent: (event: TunnelEvent) => void
   clearError: () => void
 }
 
@@ -75,6 +77,37 @@ export const useTunnelStore = create<TunnelStore>((set, get) => ({
       const stats = { ...get().stats }
       delete stats[id]
       set({ stats })
+    }
+  },
+
+  handleWsEvent: (event) => {
+    switch (event.type) {
+      case 'tunnel_snapshot':
+        set({ tunnels: event.tunnels })
+        break
+      case 'tunnel_stats':
+        set({ stats: { ...get().stats, [event.tunnel_id]: event.stats } })
+        break
+      case 'tunnel_started':
+      case 'tunnel_stopped':
+      case 'tunnel_error':
+        set({
+          tunnels: get().tunnels.map((t) =>
+            t.id === event.tunnel_id
+              ? {
+                  ...t,
+                  status: (event.status as Tunnel['status']) ?? t.status,
+                  error_message: event.error ?? t.error_message,
+                }
+              : t,
+          ),
+        })
+        if (event.type === 'tunnel_stopped') {
+          const stats = { ...get().stats }
+          delete stats[event.tunnel_id]
+          set({ stats })
+        }
+        break
     }
   },
 

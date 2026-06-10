@@ -321,7 +321,7 @@ Key endpoints:
 - `GET /tunnels` — List proxy/tunnel configs
 - `WS /ws/terminal/:session_id` — Terminal I/O
 
-Full API docs: [SPECTRE-API.md](SPECTRE-API.md)
+Full API docs: [SPECTRE-API.md](SPECTRE-API.md) · OpenAPI: [docs/openapi.yaml](docs/openapi.yaml)
 
 ## Roadmap
 
@@ -339,3 +339,13 @@ Full API docs: [SPECTRE-API.md](SPECTRE-API.md)
 ---
 
 *The best tool is the one you trust with your secrets.*
+
+
+# 1. Commit & push fix workflow
+git add .github/workflows/release.yml
+git commit -m "Fix release CI: install Zig outside repo for clean git state"
+git push origin main
+
+# 2. Pindahkan tag ke commit terbaru & trigger ulang release
+git tag -f v0.0.1-beta.1
+git push -f origin v0.0.1-beta.1

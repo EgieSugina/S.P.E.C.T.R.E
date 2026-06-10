@@ -55,7 +55,24 @@ function summarizeWsMessage(data: unknown, direction: 'in' | 'out'): { message: 
     }
 
     const parts = [type]
-    for (const key of ['connection_id', 'session_id', 'tunnel_id', 'job_id', 'name', 'port', 'reason', 'error', 'status']) {
+    for (const key of [
+      'connection_id',
+      'session_id',
+      'tunnel_id',
+      'job_id',
+      'batch_id',
+      'jump_host_id',
+      'target_host',
+      'name',
+      'port',
+      'reason',
+      'error',
+      'status',
+      'command',
+      'succeeded',
+      'failed',
+      'hop_count',
+    ]) {
       if (msg[key] !== undefined && msg[key] !== '') {
         parts.push(`${key}=${msg[key]}`)
       }

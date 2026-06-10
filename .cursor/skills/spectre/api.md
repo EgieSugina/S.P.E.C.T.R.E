@@ -165,7 +165,17 @@ Token generated on binary start → `~/.spectre/session.token` + browser localSt
 
 ## WebSocket: Tunnels
 
-`ws://localhost:57321/ws/tunnels` — tunnel status events
+`ws://localhost:57321/ws/tunnels` — tunnel status and live stats (auth via `?token=`)
+
+```json
+{ "type": "tunnel_snapshot", "tunnels": [{ "id": "uuid", "status": "running", ... }] }
+{ "type": "tunnel_started",  "tunnel_id": "uuid", "port": 1080, "status": "running" }
+{ "type": "tunnel_stopped",  "tunnel_id": "uuid", "status": "stopped" }
+{ "type": "tunnel_error",    "tunnel_id": "uuid", "status": "error", "error": "port busy" }
+{ "type": "tunnel_stats",    "tunnel_id": "uuid", "stats": { "active_connections": 2, "total_connections": 5, "bind_addr": "127.0.0.1:1080" } }
+```
+
+Stats events are pushed every ~2.5s while tunnels are running. Lifecycle events also appear on `/ws/system`.
 
 ---
 
@@ -180,6 +190,17 @@ Token generated on binary start → `~/.spectre/session.token` + browser localSt
 { "type": "tunnel_stopped",    "tunnel_id": "uuid" }
 { "type": "session_created",   "session_id": "uuid" }
 { "type": "session_destroyed", "session_id": "uuid" }
+```
+
+**Phase 3 (push notifications; REST unchanged):**
+
+```json
+{ "type": "broadcast_started",   "batch_id": "uuid", "session_ids": ["..."], "command": "uptime" }
+{ "type": "broadcast_completed", "batch_id": "uuid", "session_ids": ["..."], "succeeded": 3, "failed": 0 }
+{ "type": "broadcast_failed",    "batch_id": "uuid", "session_id": "uuid", "error": "session closed" }
+{ "type": "jump_connecting",     "connection_id": "uuid", "jump_host_id": "uuid", "target_host": "10.0.0.5" }
+{ "type": "jump_connected",      "connection_id": "uuid", "jump_host_id": "uuid", "hop_count": 2 }
+{ "type": "jump_failed",         "connection_id": "uuid", "jump_host_id": "uuid", "reason": "auth failed" }
 ```
 
 ---

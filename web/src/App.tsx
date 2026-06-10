@@ -6,6 +6,7 @@ import { StatusBar } from '@/components/layout/StatusBar'
 import { LogPanel } from '@/components/layout/LogPanel'
 import { useLogCapture } from '@/hooks/useLogCapture'
 import { useSystemEvents } from '@/hooks/useSystemEvents'
+import { useTunnelEvents } from '@/hooks/useTunnelEvents'
 import { Dashboard } from '@/pages/Dashboard'
 import { Connections } from '@/pages/Connections'
 import { TerminalPage } from '@/pages/Terminal'
@@ -53,6 +54,7 @@ function AnimatedRoutes() {
 function AppShell() {
   useLogCapture()
   useSystemEvents()
+  useTunnelEvents()
   const fetchSettings = useSettingsStore((s) => s.fetch)
 
   useEffect(() => {

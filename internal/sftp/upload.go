@@ -33,7 +33,9 @@ type UploadQueue struct {
 	MaxConcurrent int
 	jobs          map[string]*UploadJob
 	mu            sync.RWMutex
-	semaphore     chan struct{}
+	limitMu       sync.Mutex
+	cond          *sync.Cond
+	active        int
 	progressCh    chan UploadProgress
 }
 
@@ -41,12 +43,39 @@ func NewUploadQueue(maxConcurrent int) *UploadQueue {
 	if maxConcurrent < 1 || maxConcurrent > 10 {
 		maxConcurrent = 3
 	}
-	return &UploadQueue{
+	q := &UploadQueue{
 		MaxConcurrent: maxConcurrent,
 		jobs:          make(map[string]*UploadJob),
-		semaphore:     make(chan struct{}, maxConcurrent),
 		progressCh:    make(chan UploadProgress, 100),
 	}
+	q.cond = sync.NewCond(&q.limitMu)
+	return q
+}
+
+func (q *UploadQueue) SetMaxConcurrent(n int) {
+	if n < 1 || n > 10 {
+		n = 3
+	}
+	q.limitMu.Lock()
+	q.MaxConcurrent = n
+	q.cond.Broadcast()
+	q.limitMu.Unlock()
+}
+
+func (q *UploadQueue) acquire() {
+	q.limitMu.Lock()
+	for q.active >= q.MaxConcurrent {
+		q.cond.Wait()
+	}
+	q.active++
+	q.limitMu.Unlock()
+}
+
+func (q *UploadQueue) release() {
+	q.limitMu.Lock()
+	q.active--
+	q.cond.Signal()
+	q.limitMu.Unlock()
 }
 
 func (q *UploadQueue) ProgressChannel() <-chan UploadProgress {
@@ -54,8 +83,8 @@ func (q *UploadQueue) ProgressChannel() <-chan UploadProgress {
 }
 
 func (q *UploadQueue) Upload(client *pkgsftp.Client, job *UploadJob, reader io.Reader) error {
-	q.semaphore <- struct{}{}
-	defer func() { <-q.semaphore }()
+	q.acquire()
+	defer q.release()
 
 	q.mu.Lock()
 	q.jobs[job.ID] = job
