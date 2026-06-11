@@ -4,14 +4,10 @@ export interface Connection {
   id: string
   name: string
   group_id?: string | null
-  protocol?: string
   host: string
   port: number
   username: string
-  domain?: string
   auth_type: string
-  rdp_width?: number
-  rdp_height?: number
   password?: string
   private_key_id?: string
   tags?: string

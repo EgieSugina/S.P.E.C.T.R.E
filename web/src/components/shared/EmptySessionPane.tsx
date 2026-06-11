@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, FolderOpen, Monitor, Plus, Server, Terminal } from 'lucide-react'
+import { ArrowRight, FolderOpen, Plus, Server, Terminal } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/shared/Button'
 import { cn } from '@/lib/cn'
 
-type EmptySessionVariant = 'terminal' | 'rdp' | 'files'
+type EmptySessionVariant = 'terminal' | 'files'
 
 const config = {
   terminal: {
@@ -13,13 +13,6 @@ const config = {
     subtitle: 'Connect to a server, then open a tab to start a shell.',
     stepConnect: 'Connect an SSH server on Connections',
     stepOpen: 'Click + to open a terminal tab',
-  },
-  rdp: {
-    icon: Monitor,
-    title: 'No desktop sessions',
-    subtitle: 'Connect to an RDP server, then open a tab to view the desktop.',
-    stepConnect: 'Connect an RDP server on Connections',
-    stepOpen: 'Click + to open a desktop tab',
   },
   files: {
     icon: FolderOpen,

@@ -150,29 +150,6 @@ Token generated on binary start → `~/.spectre/session.token` + browser localSt
 
 ---
 
-## REST: RDP Sessions
-
-| Method | Path |
-|--------|------|
-| GET | `/rdp/sessions` |
-| POST | `/rdp/sessions` — body `{ "conn_id" }` |
-| GET | `/rdp/sessions/:id` |
-| DELETE | `/rdp/sessions/:id` |
-
-Connections with `protocol: "rdp"` use `POST /connections/:id/connect` then create a desktop session.
-
----
-
-## WebSocket: RDP Desktop
-
-`ws://localhost:57321/ws/rdp/:session_id?token=<token>`
-
-**Client → Server:** `mouse`, `keydown`, `keyup`, `resize`, `ping`
-
-**Server → Client:** `connected`, `frame` (bitmaps with base64 RGBA), `disconnected`, `pong`
-
----
-
 ## WebSocket: SFTP Progress
 
 `ws://localhost:57321/ws/sftp/:conn_id`
@@ -213,8 +190,6 @@ Stats events are pushed every ~2.5s while tunnels are running. Lifecycle events 
 { "type": "tunnel_stopped",    "tunnel_id": "uuid" }
 { "type": "session_created",   "session_id": "uuid" }
 { "type": "session_destroyed", "session_id": "uuid" }
-{ "type": "rdp_session_started", "session_id": "uuid", "conn_id": "uuid" }
-{ "type": "rdp_session_ended",   "session_id": "uuid" }
 ```
 
 **Phase 3 (push notifications; REST unchanged):**

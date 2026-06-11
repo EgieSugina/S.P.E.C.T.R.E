@@ -17,7 +17,7 @@ All requests require header: `X-SPECTRE-Token: <token>`
 | GET | `/connections/:id` | Get single connection |
 | PUT | `/connections/:id` | Update connection |
 | DELETE | `/connections/:id` | Delete connection |
-| POST | `/connections/:id/connect` | Initiate connection (`ssh` or `rdp` per `protocol`) |
+| POST | `/connections/:id/connect` | Initiate SSH connection |
 | POST | `/connections/:id/disconnect` | Close connection |
 | GET | `/connections/:id/status` | Connection health |
 | POST | `/connections/import` | Bulk import |
@@ -27,7 +27,6 @@ All requests require header: `X-SPECTRE-Token: <token>`
 ```json
 {
   "name": "Prod Server",
-  "protocol": "ssh",
   "host": "10.0.0.1",
   "port": 22,
   "username": "admin",
@@ -56,25 +55,6 @@ Use either `proxy_tunnel_id` **or** `proxy_host`+`proxy_port`, not both. The ref
 
 Connect errors involving the proxy return code `PROXY_FAILED`.
 
-**RDP connection body** (`protocol: "rdp"`):
-
-```json
-{
-  "name": "Windows VM",
-  "protocol": "rdp",
-  "host": "10.0.0.50",
-  "port": 3389,
-  "username": "Administrator",
-  "domain": "CORP",
-  "auth_type": "password",
-  "password": "secret",
-  "rdp_width": 1280,
-  "rdp_height": 720
-}
-```
-
-RDP uses password auth only (no SSH keys). Proxy fields are not supported in MVP.
-
 ---
 
 ### Sessions (Active SSH)
@@ -85,17 +65,6 @@ RDP uses password auth only (no SSH keys). Proxy fields are not supported in MVP
 | GET | `/sessions/:id` | Session detail |
 | DELETE | `/sessions/:id` | Kill session |
 | POST | `/sessions` | Create terminal session `{ "conn_id", "cols", "rows" }` |
-
----
-
-### RDP Desktop Sessions
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/rdp/sessions` | List active RDP sessions |
-| POST | `/rdp/sessions` | Create session `{ "conn_id" }` |
-| GET | `/rdp/sessions/:id` | Session detail |
-| DELETE | `/rdp/sessions/:id` | Kill session and disconnect RDP |
 
 ---
 
@@ -260,31 +229,6 @@ ws://localhost:57321/ws/terminal/:session_id
 
 ---
 
-### RDP Desktop Stream
-
-```
-ws://localhost:57321/ws/rdp/:session_id?token=<token>
-```
-
-**Client → Server:**
-```json
-{ "type": "mouse", "button": 0, "x": 100, "y": 200, "pressed": true }
-{ "type": "keydown", "scancode": 30 }
-{ "type": "keyup", "scancode": 30 }
-{ "type": "resize", "width": 1920, "height": 1080 }
-{ "type": "ping" }
-```
-
-**Server → Client:**
-```json
-{ "type": "connected", "session_id": "uuid", "width": 1280, "height": 720 }
-{ "type": "frame", "bitmaps": [{ "dest_left": 0, "dest_top": 0, "width": 64, "height": 64, "data": "<base64 RGBA>" }] }
-{ "type": "disconnected", "reason": "session closed" }
-{ "type": "pong" }
-```
-
----
-
 ### SFTP Progress Events
 
 ```
@@ -333,8 +277,6 @@ ws://localhost:57321/ws/system
 { "type": "tunnel_stopped",   "tunnel_id": "uuid" }
 { "type": "session_created",  "session_id": "uuid" }
 { "type": "session_destroyed","session_id": "uuid" }
-{ "type": "rdp_session_started", "session_id": "uuid", "conn_id": "uuid" }
-{ "type": "rdp_session_ended",   "session_id": "uuid" }
 ```
 
 **Phase 3 push notifications** (broadcast commands, jump host — REST endpoints unchanged):

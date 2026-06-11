@@ -45,7 +45,7 @@ export function formatDisconnectReason(reason: string): string {
   // Already a full user-facing sentence (e.g. from formatConnectionError).
   if (/[.!?]$/.test(reason.trim()) || reason.includes(' — ')) return reason
 
-  if (/^(connection|ssh|rdp)\s/i.test(reason)) {
+  if (/^(connection|ssh)\s/i.test(reason)) {
     return reason.charAt(0).toUpperCase() + reason.slice(1)
   }
 

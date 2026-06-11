@@ -12,7 +12,6 @@ import { clsx } from 'clsx'
 import {
   FolderInput,
   Loader2,
-  Monitor,
   RefreshCw,
   Terminal,
   Trash2,
@@ -35,7 +34,6 @@ interface ConnectionCardProps {
   onDisconnect: () => void
   onDelete: () => void
   onTerminal: () => void
-  onDesktop?: () => void
   onAssignGroup: (groupId: string | null) => void
 }
 
@@ -51,14 +49,12 @@ export function ConnectionCard({
   onDisconnect,
   onDelete,
   onTerminal,
-  onDesktop,
   onAssignGroup,
 }: ConnectionCardProps) {
   const cardAlertReason = useConnectionStore((s) => s.cardAlerts[connection.id])
   const isConnecting = useConnectionStore((s) => !!s.connectingIds[connection.id])
   const clearCardAlert = useConnectionStore((s) => s.clearCardAlert)
   const viaProxy = proxyLabel(connection, tunnels, chains)
-  const isRdp = (connection.protocol || 'ssh') === 'rdp'
   const showLostFeedback = !!cardAlertReason
   const showConnectingOverlay = isConnecting && !showLostFeedback && !isActive
 
@@ -95,7 +91,7 @@ export function ConnectionCard({
           )}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <Badge color={isRdp ? 'purple' : 'purple'}>{isRdp ? 'RDP' : 'SSH'}</Badge>
+          <Badge color="purple">SSH</Badge>
           <Badge color={isActive ? 'green' : 'purple'}>{isActive ? 'live' : 'idle'}</Badge>
         </div>
       </div>
@@ -105,15 +101,9 @@ export function ConnectionCard({
       <div className="flex flex-wrap gap-2 mt-4 items-center">
         {isActive ? (
           <>
-            {isRdp ? (
-              <Button variant="primary" onClick={onDesktop}>
-                <Monitor size={12} className="inline mr-1" /> Desktop
-              </Button>
-            ) : (
-              <Button variant="primary" onClick={onTerminal}>
-                <Terminal size={12} className="inline mr-1" /> Terminal
-              </Button>
-            )}
+            <Button variant="primary" onClick={onTerminal}>
+              <Terminal size={12} className="inline mr-1" /> Terminal
+            </Button>
             <Button variant="ghost" onClick={onDisconnect}>
               Disconnect
             </Button>

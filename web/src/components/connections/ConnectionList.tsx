@@ -15,7 +15,6 @@ interface ConnectionListProps {
   onDisconnect: (id: string) => void
   onDelete: (id: string) => void
   onTerminal: (id: string, connId: string, name: string) => void
-  onDesktop: (id: string, connId: string, name: string) => void
   onAssignGroup: (id: string, groupId: string | null) => void
 }
 
@@ -62,7 +61,6 @@ function ConnectionGrid({
   onDisconnect,
   onDelete,
   onTerminal,
-  onDesktop,
   onAssignGroup,
 }: Omit<ConnectionListProps, 'connections' | 'selectedGroupId'> & { items: Connection[] }) {
   return (
@@ -85,7 +83,6 @@ function ConnectionGrid({
             onDisconnect={() => onDisconnect(conn.id)}
             onDelete={() => onDelete(conn.id)}
             onTerminal={() => onTerminal(conn.id, connId, conn.name)}
-            onDesktop={() => onDesktop(conn.id, connId, conn.name)}
             onAssignGroup={(groupId) => onAssignGroup(conn.id, groupId)}
           />
         )
@@ -106,7 +103,6 @@ export function ConnectionList({
   onDisconnect,
   onDelete,
   onTerminal,
-  onDesktop,
   onAssignGroup,
 }: ConnectionListProps) {
   const filtered = filterConnections(connections, selectedGroupId)
@@ -142,7 +138,6 @@ export function ConnectionList({
         onDisconnect={onDisconnect}
         onDelete={onDelete}
         onTerminal={onTerminal}
-        onDesktop={onDesktop}
         onAssignGroup={onAssignGroup}
       />
     )
@@ -182,7 +177,6 @@ export function ConnectionList({
             onDisconnect={onDisconnect}
             onDelete={onDelete}
             onTerminal={onTerminal}
-            onDesktop={onDesktop}
             onAssignGroup={onAssignGroup}
           />
         </section>

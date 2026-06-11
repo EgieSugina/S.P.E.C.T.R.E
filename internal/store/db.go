@@ -44,7 +44,7 @@ func (db *DB) ConfigDir() string {
 }
 
 func (db *DB) migrate() error {
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&Connection{},
 		&Group{},
 		&Setting{},
@@ -52,7 +52,14 @@ func (db *DB) migrate() error {
 		&Tunnel{},
 		&ProxyChain{},
 		&KnownHost{},
-	)
+	); err != nil {
+		return err
+	}
+	return db.purgeRdpConnections()
+}
+
+func (db *DB) purgeRdpConnections() error {
+	return db.Exec("DELETE FROM connections WHERE protocol = ?", "rdp").Error
 }
 
 func (db *DB) seedDefaults() error {

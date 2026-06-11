@@ -10,7 +10,6 @@ import { useTunnelEvents } from '@/hooks/useTunnelEvents'
 import { Dashboard } from '@/pages/Dashboard'
 import { Connections } from '@/pages/Connections'
 import { TerminalPage } from '@/pages/Terminal'
-import { RdpPage } from '@/pages/Rdp'
 import { FileManagerPage } from '@/pages/FileManager'
 import { ProxyPage } from '@/pages/Proxy'
 import { KeysPage } from '@/pages/Keys'
@@ -43,7 +42,6 @@ function AnimatedRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/connections" element={<Connections />} />
           <Route path="/terminal" element={<TerminalPage />} />
-          <Route path="/rdp" element={<RdpPage />} />
           <Route path="/files" element={<FileManagerPage />} />
           <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/keys" element={<KeysPage />} />

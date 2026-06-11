@@ -11,14 +11,10 @@ type Connection struct {
 	ID                string     `gorm:"primaryKey" json:"id"`
 	Name              string     `json:"name"`
 	GroupID           *string    `json:"group_id,omitempty"`
-	Protocol          string     `json:"protocol"`
 	Host              string     `json:"host"`
 	Port              int        `json:"port"`
 	Username          string     `json:"username"`
-	Domain            string     `json:"domain,omitempty"`
 	AuthType          string     `json:"auth_type"`
-	RdpWidth          int        `json:"rdp_width,omitempty"`
-	RdpHeight         int        `json:"rdp_height,omitempty"`
 	Password          string     `json:"password,omitempty" gorm:"-"`
 	PasswordEnc       string     `json:"-"`
 	PrivateKeyID      *string    `json:"private_key_id,omitempty"`
@@ -40,23 +36,8 @@ func (c *Connection) BeforeCreate(tx *gorm.DB) error {
 	if c.ID == "" {
 		c.ID = uuid.New().String()
 	}
-	if c.Protocol == "" {
-		c.Protocol = "ssh"
-	}
 	if c.Port == 0 {
-		if c.Protocol == "rdp" {
-			c.Port = 3389
-		} else {
-			c.Port = 22
-		}
-	}
-	if c.Protocol == "rdp" {
-		if c.RdpWidth == 0 {
-			c.RdpWidth = 1280
-		}
-		if c.RdpHeight == 0 {
-			c.RdpHeight = 720
-		}
+		c.Port = 22
 	}
 	if c.KeepAliveInterval == 0 {
 		c.KeepAliveInterval = 30

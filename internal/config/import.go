@@ -53,6 +53,9 @@ func ImportJSON(db *store.DB, data []byte, masterPassword string, salt []byte) (
 		if conn.ID == "" {
 			continue
 		}
+		if proto, _ := raw["protocol"].(string); proto == "rdp" {
+			continue
+		}
 		existing, err := db.GetConnection(conn.ID)
 		if err != nil {
 			if err := db.CreateConnection(&conn); err != nil {
@@ -61,14 +64,10 @@ func ImportJSON(db *store.DB, data []byte, masterPassword string, salt []byte) (
 			count++
 		} else {
 			existing.Name = conn.Name
-			existing.Protocol = conn.Protocol
 			existing.Host = conn.Host
 			existing.Port = conn.Port
 			existing.Username = conn.Username
-			existing.Domain = conn.Domain
 			existing.AuthType = conn.AuthType
-			existing.RdpWidth = conn.RdpWidth
-			existing.RdpHeight = conn.RdpHeight
 			existing.GroupID = conn.GroupID
 			existing.Tags = conn.Tags
 			existing.Notes = conn.Notes
